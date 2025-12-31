@@ -6,10 +6,10 @@ import { GoalInsights } from '@/components/GoalInsights';
 import { CycleCalendar } from '@/components/CycleCalendar';
 import { AncureOneSection } from '@/components/AncureOneSection';
 import { NotificationSettings } from '@/components/NotificationSettings';
-import { GatedPeriodLogger } from '@/components/GatedPeriodLogger';
-import { GatedSymptomLogger } from '@/components/GatedSymptomLogger';
-import { GatedCycleHistory } from '@/components/GatedCycleHistory';
-import { GatedSymptomTrendsChart } from '@/components/GatedSymptomTrendsChart';
+import { PeriodLogger } from '@/components/PeriodLogger';
+import { SymptomLogger } from '@/components/SymptomLogger';
+import { CycleHistory } from '@/components/CycleHistory';
+import { SymptomTrendsChart } from '@/components/SymptomTrendsChart';
 import { CycleData, CycleInsights, formatDate } from '@/lib/cycleCalculations';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -80,30 +80,30 @@ export function Dashboard({ data, insights, onReset, onLogPeriod }: DashboardPro
         </motion.div>
       )}
 
-      {/* Symptom Tracking & Cycle History - Gated */}
+      {/* Symptom Tracking & Cycle History */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
         className="grid md:grid-cols-2 gap-4"
       >
-        <GatedSymptomLogger />
-        <GatedCycleHistory 
+        <SymptomLogger />
+        <CycleHistory 
           currentCycleLength={data.cycleLength}
           lastPeriodDate={data.lastPeriodDate}
         />
       </motion.div>
 
-      {/* Symptom Trends Chart - Gated */}
+      {/* Symptom Trends Chart */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.25 }}
       >
-        <GatedSymptomTrendsChart />
+        <SymptomTrendsChart />
       </motion.div>
 
-      {/* Reminders & Period Logging - Gated */}
+      {/* Reminders & Period Logging */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -111,7 +111,7 @@ export function Dashboard({ data, insights, onReset, onLogPeriod }: DashboardPro
         className="grid md:grid-cols-2 gap-4"
       >
         <NotificationSettings insights={insights} goal={data.goal} />
-        <GatedPeriodLogger 
+        <PeriodLogger 
           currentLastPeriodDate={data.lastPeriodDate} 
           onLogPeriod={onLogPeriod}
         />
