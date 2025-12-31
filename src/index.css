@@ -1,0 +1,218 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Warm feminine palette */
+    --background: 30 30% 98%;
+    --foreground: 340 30% 18%;
+
+    --card: 30 25% 99%;
+    --card-foreground: 340 20% 25%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 340 20% 25%;
+
+    /* Soft pink primary */
+    --primary: 340 75% 65%;
+    --primary-foreground: 0 0% 100%;
+    --primary-soft: 340 70% 85%;
+    --primary-glow: 340 80% 75%;
+
+    /* Lavender secondary */
+    --secondary: 270 45% 85%;
+    --secondary-foreground: 270 40% 35%;
+
+    /* Peach accent */
+    --accent: 20 85% 78%;
+    --accent-foreground: 20 60% 30%;
+
+    /* Blush muted */
+    --muted: 340 30% 95%;
+    --muted-foreground: 340 15% 50%;
+
+    --destructive: 0 72% 65%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 340 25% 90%;
+    --input: 340 25% 92%;
+    --ring: 340 75% 65%;
+
+    --radius: 1rem;
+
+    /* Custom gradients - neutral/white based */
+    --gradient-primary: linear-gradient(135deg, hsl(340, 75%, 65%) 0%, hsl(340, 80%, 80%) 100%);
+    --gradient-lavender: linear-gradient(135deg, hsl(270, 45%, 85%) 0%, hsl(340, 70%, 90%) 100%);
+    --gradient-peach: linear-gradient(135deg, hsl(20, 85%, 78%) 0%, hsl(340, 70%, 85%) 100%);
+    --gradient-hero: hsl(0, 0%, 100%);
+    --gradient-card: hsl(0, 0%, 100%);
+    --gradient-soft: hsl(0, 0%, 99%);
+
+    /* Phase-specific gradients (forced solid to avoid mobile banding) */
+    --gradient-menstrual: hsl(0, 0%, 100%);
+    --gradient-follicular: hsl(0, 0%, 100%);
+    --gradient-ovulation: hsl(0, 0%, 100%);
+    --gradient-luteal: hsl(0, 0%, 100%);
+
+    /* Shadows */
+    --shadow-soft: 0 4px 20px -4px hsl(340 30% 50% / 0.12);
+    --shadow-glow: 0 8px 32px -8px hsl(340 75% 65% / 0.25);
+    --shadow-card: 0 2px 12px -2px hsl(340 30% 50% / 0.08);
+    --shadow-hover: 0 12px 40px -12px hsl(340 75% 65% / 0.3);
+
+    /* Sidebar */
+    --sidebar-background: 340 30% 98%;
+    --sidebar-foreground: 340 20% 30%;
+    --sidebar-primary: 340 75% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 270 45% 92%;
+    --sidebar-accent-foreground: 270 40% 35%;
+    --sidebar-border: 340 25% 92%;
+    --sidebar-ring: 340 75% 65%;
+  }
+
+  .dark {
+    --background: 340 20% 8%;
+    --foreground: 340 20% 95%;
+
+    --card: 340 20% 12%;
+    --card-foreground: 340 20% 95%;
+
+    --popover: 340 20% 12%;
+    --popover-foreground: 340 20% 95%;
+
+    --primary: 340 70% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-soft: 340 50% 25%;
+    --primary-glow: 340 70% 50%;
+
+    --secondary: 270 35% 25%;
+    --secondary-foreground: 270 40% 90%;
+
+    --accent: 20 60% 30%;
+    --accent-foreground: 20 60% 90%;
+
+    --muted: 340 20% 18%;
+    --muted-foreground: 340 15% 65%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 340 20% 20%;
+    --input: 340 20% 20%;
+    --ring: 340 70% 60%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(340, 70%, 50%) 0%, hsl(340, 60%, 40%) 100%);
+    --gradient-hero: hsl(var(--background));
+
+    --shadow-soft: 0 4px 20px -4px hsl(0 0% 0% / 0.3);
+    --shadow-glow: 0 8px 32px -8px hsl(340 70% 50% / 0.3);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Nunito", sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Nunito", sans-serif;
+    font-weight: 700;
+  }
+}
+
+@layer utilities {
+  /* Force all gradient/phase utilities to solid white to prevent mobile banding */
+  .gradient-primary,
+  .gradient-lavender,
+  .gradient-peach,
+  .gradient-hero,
+  .gradient-card,
+  .gradient-soft,
+  .phase-menstrual,
+  .phase-follicular,
+  .phase-ovulation,
+  .phase-luteal {
+    background: hsl(0, 0%, 100%) !important;
+  }
+
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-hover {
+    box-shadow: var(--shadow-hover);
+  }
+
+  .text-gradient {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* Flatten gradients and disable blur on mobile for smoother rendering */
+@media (max-width: 768px) {
+  :root {
+    /* Force ALL gradient variables to solid white on phones */
+    --gradient-primary: hsl(0, 0%, 100%);
+    --gradient-lavender: hsl(0, 0%, 100%);
+    --gradient-peach: hsl(0, 0%, 100%);
+
+    --gradient-hero: hsl(0, 0%, 100%);
+    --gradient-card: hsl(0, 0%, 100%);
+    --gradient-soft: hsl(0, 0%, 100%);
+
+    --gradient-menstrual: hsl(0, 0%, 100%);
+    --gradient-follicular: hsl(0, 0%, 100%);
+    --gradient-ovulation: hsl(0, 0%, 100%);
+    --gradient-luteal: hsl(0, 0%, 100%);
+  }
+
+  .backdrop-blur,
+  .backdrop-blur-md,
+  .backdrop-blur-lg {
+    backdrop-filter: none !important;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary-soft));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
