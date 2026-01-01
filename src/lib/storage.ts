@@ -1,9 +1,8 @@
-import { supabase } from '@/integrations/supabase/client';
 import { CycleData } from './cycleCalculations';
 
 const STORAGE_KEY = 'ancure_cycle_data';
 
-// Local storage functions (for guests)
+// Local storage functions (for guests) - NO backend calls
 export function saveLocalCycleData(data: CycleData): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -37,9 +36,19 @@ export function hasLocalData(): boolean {
   return localStorage.getItem(STORAGE_KEY) !== null;
 }
 
-// Supabase functions (for logged in users)
+// Lazy-loaded Supabase functions - only import when user is authenticated
+let supabaseModule: typeof import('@/integrations/supabase/client') | null = null;
+
+async function getSupabase() {
+  if (!supabaseModule) {
+    supabaseModule = await import('@/integrations/supabase/client');
+  }
+  return supabaseModule.supabase;
+}
+
 export async function saveCloudCycleData(userId: string, data: CycleData): Promise<{ error: Error | null }> {
   try {
+    const supabase = await getSupabase();
     const { error } = await supabase
       .from('cycle_data')
       .upsert({
@@ -67,6 +76,7 @@ export async function saveCloudCycleData(userId: string, data: CycleData): Promi
 
 export async function loadCloudCycleData(userId: string): Promise<CycleData | null> {
   try {
+    const supabase = await getSupabase();
     const { data, error } = await supabase
       .from('cycle_data')
       .select('*')
@@ -95,6 +105,7 @@ export async function loadCloudCycleData(userId: string): Promise<CycleData | nu
 
 export async function deleteCloudCycleData(userId: string): Promise<{ error: Error | null }> {
   try {
+    const supabase = await getSupabase();
     const { error } = await supabase
       .from('cycle_data')
       .delete()

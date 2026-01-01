@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Smile, Frown, Meh, Zap, Battery, BatteryLow, Check, Plus } from 'lucide-react';
+import { Heart, Smile, Frown, Meh, Zap, Battery, BatteryLow, Check, Plus, Lock, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
 const SYMPTOM_OPTIONS = [
@@ -39,8 +39,9 @@ interface SymptomLoggerProps {
 }
 
 export function SymptomLogger({ onLogSuccess }: SymptomLoggerProps) {
-  const { user } = useAuth();
+  const { user, initializeAuth } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
@@ -48,17 +49,27 @@ export function SymptomLogger({ onLogSuccess }: SymptomLoggerProps) {
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [todayLogged, setTodayLogged] = useState(false);
+  const [supabase, setSupabase] = useState<any>(null);
 
   const today = format(new Date(), 'yyyy-MM-dd');
 
+  // Lazy load supabase only when user is authenticated
   useEffect(() => {
-    if (user) {
+    if (user && !supabase) {
+      import('@/integrations/supabase/client').then(mod => {
+        setSupabase(mod.supabase);
+      });
+    }
+  }, [user, supabase]);
+
+  useEffect(() => {
+    if (user && supabase) {
       checkTodayLog();
     }
-  }, [user]);
+  }, [user, supabase]);
 
   const checkTodayLog = async () => {
-    if (!user) return;
+    if (!user || !supabase) return;
     
     const { data } = await supabase
       .from('symptom_logs')
@@ -85,7 +96,7 @@ export function SymptomLogger({ onLogSuccess }: SymptomLoggerProps) {
   };
 
   const handleSave = async () => {
-    if (!user) {
+    if (!user || !supabase) {
       toast({
         title: 'Sign in required',
         description: 'Please sign in to log symptoms.',
@@ -128,6 +139,12 @@ export function SymptomLogger({ onLogSuccess }: SymptomLoggerProps) {
     }
   };
 
+  const handleSignIn = async () => {
+    await initializeAuth();
+    navigate('/auth');
+  };
+
+  // Show upgrade prompt for unauthenticated users
   if (!user) {
     return (
       <Card variant="soft" className="overflow-hidden border border-border/50">
@@ -137,10 +154,40 @@ export function SymptomLogger({ onLogSuccess }: SymptomLoggerProps) {
             Daily Symptom Log
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Sign in to track daily symptoms and see patterns over time.
-          </p>
+        <CardContent className="space-y-4">
+          {/* Preview of feature */}
+          <div className="opacity-50 pointer-events-none">
+            <div className="flex flex-wrap gap-2 mb-4">
+              {SYMPTOM_OPTIONS.slice(0, 4).map(symptom => (
+                <span
+                  key={symptom.id}
+                  className="px-3 py-1.5 rounded-full text-xs bg-background/50 border border-border/50 text-muted-foreground"
+                >
+                  {symptom.emoji} {symptom.label}
+                </span>
+              ))}
+              <span className="px-3 py-1.5 rounded-full text-xs bg-background/50 border border-border/50 text-muted-foreground">
+                +6 more
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/10">
+            <div className="p-2 rounded-full bg-primary/10">
+              <Lock className="w-4 h-4 text-primary" />
+            </div>
+            <p className="text-sm text-muted-foreground flex-1">
+              Track daily symptoms and see patterns over time
+            </p>
+          </div>
+          <Button
+            variant="soft"
+            className="w-full gap-2"
+            onClick={handleSignIn}
+          >
+            <LogIn className="w-4 h-4" />
+            Sign in to unlock
+          </Button>
         </CardContent>
       </Card>
     );

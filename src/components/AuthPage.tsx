@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,18 +8,28 @@ import { Logo } from '@/components/Logo';
 import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Mail, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
 export function AuthPage() {
   const navigate = useNavigate();
-  const {
-    signInWithMagicLink
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
+  const { signInWithMagicLink, initializeAuth, user } = useAuth();
+  const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [error, setError] = useState('');
+
+  // Initialize auth when page loads
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/track');
+    }
+  }, [user, navigate]);
+
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);

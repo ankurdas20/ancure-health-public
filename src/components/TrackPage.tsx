@@ -19,44 +19,56 @@ import { Button } from "@/components/ui/button";
 
 export function TrackPage() {
   const navigate = useNavigate();
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading, initialized, initializeAuth, signOut } = useAuth();
 
   const [cycleData, setCycleData] = useState<CycleData | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hasReset, setHasReset] = useState(false);
 
+  // Load local data immediately (no auth required)
   useEffect(() => {
-    const loadData = async () => {
-      if (authLoading || hasReset) return;
-      setIsLoading(true);
-      if (user) {
-        await migrateLocalToCloud(user.id);
-        const cloudData = await loadCloudCycleData(user.id);
-        if (cloudData) {
-          setCycleData(cloudData);
-          setShowDashboard(true);
-        }
-      } else {
-        const localData = loadLocalCycleData();
-        if (localData) {
-          setCycleData(localData);
-          setShowDashboard(true);
-        }
+    const localData = loadLocalCycleData();
+    if (localData) {
+      setCycleData(localData);
+      setShowDashboard(true);
+    }
+    setIsLoading(false);
+  }, []);
+
+  // If user becomes authenticated, sync with cloud
+  useEffect(() => {
+    const syncWithCloud = async () => {
+      if (!user || hasReset) return;
+      
+      // Migrate local data to cloud
+      await migrateLocalToCloud(user.id);
+      
+      // Load cloud data (may have more history)
+      const cloudData = await loadCloudCycleData(user.id);
+      if (cloudData) {
+        setCycleData(cloudData);
+        setShowDashboard(true);
       }
-      setIsLoading(false);
     };
-    loadData();
-  }, [user, authLoading, hasReset]);
+
+    if (user && initialized) {
+      syncWithCloud();
+    }
+  }, [user, initialized, hasReset]);
 
   const handleFormSubmit = async (data: CycleData) => {
     setHasReset(false);
     setCycleData(data);
+    
+    // Always save locally first (instant)
+    saveLocalCycleData(data);
+    
+    // If user is authenticated, also save to cloud
     if (user) {
       await saveCloudCycleData(user.id, data);
-    } else {
-      saveLocalCycleData(data);
     }
+    
     setShowDashboard(true);
   };
 
@@ -71,10 +83,13 @@ export function TrackPage() {
     if (!cycleData) return;
     const updatedData = { ...cycleData, lastPeriodDate: date };
     setCycleData(updatedData);
+    
+    // Save locally first
+    saveLocalCycleData(updatedData);
+    
+    // Sync to cloud if authenticated
     if (user) {
       await saveCloudCycleData(user.id, updatedData);
-    } else {
-      saveLocalCycleData(updatedData);
     }
   };
 
@@ -86,16 +101,24 @@ export function TrackPage() {
     if (localData) {
       setCycleData(localData);
       setShowDashboard(true);
+    } else {
+      setCycleData(null);
+      setShowDashboard(false);
     }
+  };
+
+  const handleSignIn = async () => {
+    // Initialize auth before navigating
+    await initializeAuth();
+    navigate("/auth");
   };
 
   const insights = cycleData ? calculateCycleInsights(cycleData) : null;
 
-  if (authLoading || isLoading) {
+  // Show loading only briefly for local data
+  if (isLoading) {
     return (
-      <div className="min-h-screen w-full bg-background">
-        {" "}
-        {/* Change bg-white to bg-background */}
+      <div className="min-h-screen w-full bg-background flex items-center justify-center">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ repeat: Infinity, duration: 1 }}
@@ -113,9 +136,23 @@ export function TrackPage() {
             <ArrowLeft className="w-4 h-4" /> Back
           </Button>
           <Logo size="small" />
-          <Button variant="ghost" size="sm" onClick={user ? handleSignOut : () => navigate("/auth")}>
-            {user ? <LogOut className="w-4 h-4 mr-2" /> : <LogIn className="w-4 h-4 mr-2" />}
-            {user ? "Sign out" : "Sign in"}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={user ? handleSignOut : handleSignIn}
+            disabled={authLoading}
+          >
+            {user ? (
+              <>
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign out
+              </>
+            ) : (
+              <>
+                <LogIn className="w-4 h-4 mr-2" />
+                Sign in
+              </>
+            )}
           </Button>
         </header>
 
@@ -128,7 +165,12 @@ export function TrackPage() {
             ) : (
               <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                 {cycleData && insights && (
-                  <Dashboard data={cycleData} insights={insights} onReset={handleReset} onLogPeriod={handleLogPeriod} />
+                  <Dashboard 
+                    data={cycleData} 
+                    insights={insights} 
+                    onReset={handleReset} 
+                    onLogPeriod={handleLogPeriod}
+                  />
                 )}
               </motion.div>
             )}
