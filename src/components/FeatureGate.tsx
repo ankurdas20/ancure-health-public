@@ -1,5 +1,4 @@
-import { ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { ReactNode, memo } from 'react';
 import { Lock, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,14 +13,14 @@ interface FeatureGateProps {
   requiresAuth?: boolean;
 }
 
-export function FeatureGate({ 
+export const FeatureGate = memo(function FeatureGate({ 
   children, 
   title, 
   description, 
   icon,
   requiresAuth = true 
 }: FeatureGateProps) {
-  const { user, initialized } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   // If auth not required or user is logged in, show children
@@ -60,7 +59,7 @@ export function FeatureGate({
       </CardContent>
     </Card>
   );
-}
+});
 
 // Lightweight placeholder that shows feature preview without loading backend
 interface FeaturePlaceholderProps {
@@ -70,7 +69,7 @@ interface FeaturePlaceholderProps {
   previewContent?: ReactNode;
 }
 
-export function FeaturePlaceholder({ 
+export const FeaturePlaceholder = memo(function FeaturePlaceholder({ 
   title, 
   description, 
   icon,
@@ -113,4 +112,4 @@ export function FeaturePlaceholder({
       </CardContent>
     </Card>
   );
-}
+});
