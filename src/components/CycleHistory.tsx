@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { History, Calendar, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { History, Calendar, TrendingUp, ChevronDown, ChevronUp, Lock, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
 interface PeriodLog {
@@ -30,22 +30,31 @@ interface CycleHistoryProps {
 }
 
 export function CycleHistory({ currentCycleLength, lastPeriodDate }: CycleHistoryProps) {
-  const { user } = useAuth();
+  const { user, initializeAuth } = useAuth();
+  const navigate = useNavigate();
   const [periodLogs, setPeriodLogs] = useState<PeriodLog[]>([]);
   const [symptomLogs, setSymptomLogs] = useState<SymptomLog[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [supabase, setSupabase] = useState<any>(null);
+
+  // Lazy load supabase only when user is authenticated
+  useEffect(() => {
+    if (user && !supabase) {
+      import('@/integrations/supabase/client').then(mod => {
+        setSupabase(mod.supabase);
+      });
+    }
+  }, [user, supabase]);
 
   useEffect(() => {
-    if (user) {
+    if (user && supabase) {
       loadHistory();
-    } else {
-      setIsLoading(false);
     }
-  }, [user]);
+  }, [user, supabase]);
 
   const loadHistory = async () => {
-    if (!user) return;
+    if (!user || !supabase) return;
     
     setIsLoading(true);
     
@@ -105,9 +114,12 @@ export function CycleHistory({ currentCycleLength, lastPeriodDate }: CycleHistor
       .map(([symptom]) => symptom.replace('_', ' '));
   };
 
-  const avgCycleLength = calculateAverageCycleLength();
-  const commonSymptoms = getMostCommonSymptoms();
+  const handleSignIn = async () => {
+    await initializeAuth();
+    navigate('/auth');
+  };
 
+  // Show upgrade prompt for unauthenticated users
   if (!user) {
     return (
       <Card variant="soft" className="overflow-hidden border border-border/50">
@@ -117,14 +129,50 @@ export function CycleHistory({ currentCycleLength, lastPeriodDate }: CycleHistor
             Cycle History
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Sign in to track your cycle history and see patterns.
-          </p>
+        <CardContent className="space-y-4">
+          {/* Preview */}
+          <div className="opacity-50 pointer-events-none">
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="p-3 rounded-xl bg-background/50 text-center">
+                <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                  <TrendingUp className="w-3 h-3" />
+                  <span className="text-xs">Avg Cycle</span>
+                </div>
+                <p className="text-lg font-semibold text-foreground">-- days</p>
+              </div>
+              <div className="p-3 rounded-xl bg-background/50 text-center">
+                <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                  <Calendar className="w-3 h-3" />
+                  <span className="text-xs">Periods Logged</span>
+                </div>
+                <p className="text-lg font-semibold text-foreground">--</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/10">
+            <div className="p-2 rounded-full bg-primary/10">
+              <Lock className="w-4 h-4 text-primary" />
+            </div>
+            <p className="text-sm text-muted-foreground flex-1">
+              Track your cycle history and see patterns
+            </p>
+          </div>
+          <Button
+            variant="soft"
+            className="w-full gap-2"
+            onClick={handleSignIn}
+          >
+            <LogIn className="w-4 h-4" />
+            Sign in to unlock
+          </Button>
         </CardContent>
       </Card>
     );
   }
+
+  const avgCycleLength = calculateAverageCycleLength();
+  const commonSymptoms = getMostCommonSymptoms();
 
   return (
     <Card variant="soft" className="overflow-hidden border border-border/50">

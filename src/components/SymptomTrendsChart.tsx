@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Calendar } from 'lucide-react';
+import { TrendingUp, Lock, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { format, subDays, parseISO, startOfDay } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
+import { format, subDays, parseISO } from 'date-fns';
 import {
   AreaChart,
   Area,
@@ -37,34 +38,32 @@ const SYMPTOM_LABELS: Record<string, string> = {
   nausea: 'Nausea',
 };
 
-const MOOD_COLORS: Record<string, string> = {
-  happy: 'hsl(142, 76%, 36%)',
-  neutral: 'hsl(48, 96%, 53%)',
-  sad: 'hsl(217, 91%, 60%)',
-};
-
-const ENERGY_COLORS: Record<string, string> = {
-  high: 'hsl(142, 76%, 36%)',
-  medium: 'hsl(48, 96%, 53%)',
-  low: 'hsl(0, 84%, 60%)',
-};
-
 export function SymptomTrendsChart() {
-  const { user } = useAuth();
+  const { user, initializeAuth } = useAuth();
+  const navigate = useNavigate();
   const [logs, setLogs] = useState<SymptomLog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [supabase, setSupabase] = useState<any>(null);
+
+  // Lazy load supabase only when user is authenticated
+  useEffect(() => {
+    if (user && !supabase) {
+      import('@/integrations/supabase/client').then(mod => {
+        setSupabase(mod.supabase);
+      });
+    }
+  }, [user, supabase]);
 
   useEffect(() => {
-    if (user) {
+    if (user && supabase) {
       loadLogs();
-    } else {
-      setIsLoading(false);
     }
-  }, [user]);
+  }, [user, supabase]);
 
   const loadLogs = async () => {
-    if (!user) return;
+    if (!user || !supabase) return;
     
+    setIsLoading(true);
     const thirtyDaysAgo = subDays(new Date(), 30).toISOString().split('T')[0];
     
     const { data } = await supabase
@@ -120,6 +119,12 @@ export function SymptomTrendsChart() {
     });
   };
 
+  const handleSignIn = async () => {
+    await initializeAuth();
+    navigate('/auth');
+  };
+
+  // Show upgrade prompt for unauthenticated users
   if (!user) {
     return (
       <Card variant="soft" className="overflow-hidden border border-border/50">
@@ -129,10 +134,36 @@ export function SymptomTrendsChart() {
             Symptom Trends
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Sign in to view your symptom trends over time.
-          </p>
+        <CardContent className="space-y-4">
+          {/* Preview chart placeholder */}
+          <div className="opacity-40 pointer-events-none">
+            <div className="h-24 flex items-end justify-between gap-1 px-4">
+              {[40, 60, 45, 70, 55, 80, 65].map((height, i) => (
+                <div
+                  key={i}
+                  className="flex-1 bg-primary/30 rounded-t"
+                  style={{ height: `${height}%` }}
+                />
+              ))}
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/10">
+            <div className="p-2 rounded-full bg-primary/10">
+              <Lock className="w-4 h-4 text-primary" />
+            </div>
+            <p className="text-sm text-muted-foreground flex-1">
+              View your symptom trends over time
+            </p>
+          </div>
+          <Button
+            variant="soft"
+            className="w-full gap-2"
+            onClick={handleSignIn}
+          >
+            <LogIn className="w-4 h-4" />
+            Sign in to unlock
+          </Button>
         </CardContent>
       </Card>
     );
