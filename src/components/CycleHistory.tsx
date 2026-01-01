@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { motion } from 'framer-motion';
 import { History, Calendar, TrendingUp, ChevronDown, ChevronUp, Lock, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,7 +29,7 @@ interface CycleHistoryProps {
   lastPeriodDate: string;
 }
 
-export function CycleHistory({ currentCycleLength, lastPeriodDate }: CycleHistoryProps) {
+export const CycleHistory = memo(function CycleHistory({ currentCycleLength }: CycleHistoryProps) {
   const { user, initializeAuth } = useAuth();
   const navigate = useNavigate();
   const [periodLogs, setPeriodLogs] = useState<PeriodLog[]>([]);
@@ -53,7 +53,7 @@ export function CycleHistory({ currentCycleLength, lastPeriodDate }: CycleHistor
     }
   }, [user, supabase]);
 
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     if (!user || !supabase) return;
     
     setIsLoading(true);
@@ -81,9 +81,9 @@ export function CycleHistory({ currentCycleLength, lastPeriodDate }: CycleHistor
     }
     
     setIsLoading(false);
-  };
+  }, [user, supabase]);
 
-  const calculateAverageCycleLength = () => {
+  const calculateAverageCycleLength = useCallback(() => {
     if (periodLogs.length < 2) return null;
     
     const cycleLengths: number[] = [];
@@ -98,9 +98,9 @@ export function CycleHistory({ currentCycleLength, lastPeriodDate }: CycleHistor
     
     if (cycleLengths.length === 0) return null;
     return Math.round(cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length);
-  };
+  }, [periodLogs]);
 
-  const getMostCommonSymptoms = () => {
+  const getMostCommonSymptoms = useCallback(() => {
     const symptomCounts: Record<string, number> = {};
     symptomLogs.forEach(log => {
       log.symptoms.forEach(symptom => {
@@ -112,12 +112,12 @@ export function CycleHistory({ currentCycleLength, lastPeriodDate }: CycleHistor
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
       .map(([symptom]) => symptom.replace('_', ' '));
-  };
+  }, [symptomLogs]);
 
-  const handleSignIn = async () => {
+  const handleSignIn = useCallback(async () => {
     await initializeAuth();
     navigate('/auth');
-  };
+  }, [initializeAuth, navigate]);
 
   // Show upgrade prompt for unauthenticated users
   if (!user) {
@@ -185,10 +185,8 @@ export function CycleHistory({ currentCycleLength, lastPeriodDate }: CycleHistor
       <CardContent className="space-y-4">
         {isLoading ? (
           <div className="flex justify-center py-4">
-            <motion.div
-              className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            <div
+              className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"
             />
           </div>
         ) : periodLogs.length === 0 && symptomLogs.length === 0 ? (
@@ -297,4 +295,4 @@ export function CycleHistory({ currentCycleLength, lastPeriodDate }: CycleHistor
       </CardContent>
     </Card>
   );
-}
+});

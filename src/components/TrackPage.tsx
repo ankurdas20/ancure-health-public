@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
@@ -17,7 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, LogIn, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export function TrackPage() {
+export const TrackPage = memo(function TrackPage() {
   const navigate = useNavigate();
   const { user, loading: authLoading, initialized, initializeAuth, signOut } = useAuth();
 
@@ -57,7 +57,7 @@ export function TrackPage() {
     }
   }, [user, initialized, hasReset]);
 
-  const handleFormSubmit = async (data: CycleData) => {
+  const handleFormSubmit = useCallback(async (data: CycleData) => {
     setHasReset(false);
     setCycleData(data);
     
@@ -70,16 +70,16 @@ export function TrackPage() {
     }
     
     setShowDashboard(true);
-  };
+  }, [user]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setHasReset(true);
     if (!user) clearLocalCycleData();
     setCycleData(null);
     setShowDashboard(false);
-  };
+  }, [user]);
 
-  const handleLogPeriod = async (date: string) => {
+  const handleLogPeriod = useCallback(async (date: string) => {
     if (!cycleData) return;
     const updatedData = { ...cycleData, lastPeriodDate: date };
     setCycleData(updatedData);
@@ -91,12 +91,11 @@ export function TrackPage() {
     if (user) {
       await saveCloudCycleData(user.id, updatedData);
     }
-  };
+  }, [cycleData, user]);
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     await signOut();
-    setCycleData(null);
-    setShowDashboard(false);
+    // Keep local data visible after sign out
     const localData = loadLocalCycleData();
     if (localData) {
       setCycleData(localData);
@@ -105,13 +104,13 @@ export function TrackPage() {
       setCycleData(null);
       setShowDashboard(false);
     }
-  };
+  }, [signOut]);
 
-  const handleSignIn = async () => {
+  const handleSignIn = useCallback(async () => {
     // Initialize auth before navigating
     await initializeAuth();
     navigate("/auth");
-  };
+  }, [initializeAuth, navigate]);
 
   const insights = cycleData ? calculateCycleInsights(cycleData) : null;
 
@@ -119,11 +118,7 @@ export function TrackPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen w-full bg-background flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1 }}
-          className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full"
-        />
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -179,4 +174,4 @@ export function TrackPage() {
       </div>
     </div>
   );
-}
+});

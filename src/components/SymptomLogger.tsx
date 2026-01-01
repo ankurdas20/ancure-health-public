@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Smile, Frown, Meh, Zap, Battery, BatteryLow, Check, Plus, Lock, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,25 +20,49 @@ const SYMPTOM_OPTIONS = [
   { id: 'breast_tenderness', label: 'Breast Tenderness', emoji: '💗' },
   { id: 'backache', label: 'Backache', emoji: '🔙' },
   { id: 'nausea', label: 'Nausea', emoji: '🤢' },
-];
+] as const;
 
 const MOOD_OPTIONS = [
   { id: 'happy', label: 'Happy', icon: Smile, color: 'text-green-500' },
   { id: 'neutral', label: 'Neutral', icon: Meh, color: 'text-yellow-500' },
   { id: 'sad', label: 'Sad', icon: Frown, color: 'text-blue-500' },
-];
+] as const;
 
 const ENERGY_OPTIONS = [
   { id: 'high', label: 'High', icon: Zap, color: 'text-green-500' },
   { id: 'medium', label: 'Medium', icon: Battery, color: 'text-yellow-500' },
   { id: 'low', label: 'Low', icon: BatteryLow, color: 'text-red-500' },
-];
+] as const;
 
 interface SymptomLoggerProps {
   onLogSuccess?: () => void;
 }
 
-export function SymptomLogger({ onLogSuccess }: SymptomLoggerProps) {
+// Memoized symptom button to prevent re-renders
+const SymptomButton = memo(function SymptomButton({ 
+  symptom, 
+  isSelected, 
+  onClick 
+}: { 
+  symptom: typeof SYMPTOM_OPTIONS[number]; 
+  isSelected: boolean; 
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-xs transition-all border ${
+        isSelected
+          ? 'bg-primary/20 border-primary text-foreground'
+          : 'bg-background/50 border-border/50 text-muted-foreground hover:border-primary/50'
+      }`}
+    >
+      {symptom.emoji} {symptom.label}
+    </button>
+  );
+});
+
+export const SymptomLogger = memo(function SymptomLogger({ onLogSuccess }: SymptomLoggerProps) {
   const { user, initializeAuth } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -68,7 +92,7 @@ export function SymptomLogger({ onLogSuccess }: SymptomLoggerProps) {
     }
   }, [user, supabase]);
 
-  const checkTodayLog = async () => {
+  const checkTodayLog = useCallback(async () => {
     if (!user || !supabase) return;
     
     const { data } = await supabase
@@ -85,17 +109,17 @@ export function SymptomLogger({ onLogSuccess }: SymptomLoggerProps) {
       setSelectedEnergy(data.energy_level);
       setNotes(data.notes || '');
     }
-  };
+  }, [user, supabase, today]);
 
-  const toggleSymptom = (symptomId: string) => {
+  const toggleSymptom = useCallback((symptomId: string) => {
     setSelectedSymptoms(prev =>
       prev.includes(symptomId)
         ? prev.filter(s => s !== symptomId)
         : [...prev, symptomId]
     );
-  };
+  }, []);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!user || !supabase) {
       toast({
         title: 'Sign in required',
@@ -137,12 +161,12 @@ export function SymptomLogger({ onLogSuccess }: SymptomLoggerProps) {
       });
       onLogSuccess?.();
     }
-  };
+  }, [user, supabase, today, selectedSymptoms, selectedMood, selectedEnergy, notes, toast, onLogSuccess]);
 
-  const handleSignIn = async () => {
+  const handleSignIn = useCallback(async () => {
     await initializeAuth();
     navigate('/auth');
-  };
+  }, [initializeAuth, navigate]);
 
   // Show upgrade prompt for unauthenticated users
   if (!user) {
@@ -231,17 +255,12 @@ export function SymptomLogger({ onLogSuccess }: SymptomLoggerProps) {
                 <p className="text-sm font-medium mb-2">How are you feeling?</p>
                 <div className="flex flex-wrap gap-2">
                   {SYMPTOM_OPTIONS.map(symptom => (
-                    <button
+                    <SymptomButton
                       key={symptom.id}
+                      symptom={symptom}
+                      isSelected={selectedSymptoms.includes(symptom.id)}
                       onClick={() => toggleSymptom(symptom.id)}
-                      className={`px-3 py-1.5 rounded-full text-xs transition-all border ${
-                        selectedSymptoms.includes(symptom.id)
-                          ? 'bg-primary/20 border-primary text-foreground'
-                          : 'bg-background/50 border-border/50 text-muted-foreground hover:border-primary/50'
-                      }`}
-                    >
-                      {symptom.emoji} {symptom.label}
-                    </button>
+                    />
                   ))}
                 </div>
               </div>
@@ -330,4 +349,4 @@ export function SymptomLogger({ onLogSuccess }: SymptomLoggerProps) {
       </CardContent>
     </Card>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -18,34 +18,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  const [supabaseClient, setSupabaseClient] = useState<typeof import('@/integrations/supabase/client').supabase | null>(null);
+  
+  // Use ref to store supabase client to avoid re-renders
+  const supabaseRef = useRef<typeof import('@/integrations/supabase/client').supabase | null>(null);
+  const initializingRef = useRef(false);
 
   // Lazy-load Supabase only when needed
   const getSupabase = useCallback(async () => {
-    if (supabaseClient) return supabaseClient;
+    if (supabaseRef.current) return supabaseRef.current;
     
     const { supabase } = await import('@/integrations/supabase/client');
-    setSupabaseClient(supabase);
+    supabaseRef.current = supabase;
     return supabase;
-  }, [supabaseClient]);
+  }, []);
 
   // Initialize auth - only called when user wants to sign in or access auth features
   const initializeAuth = useCallback(async () => {
-    if (initialized) return;
+    if (initialized || initializingRef.current) return;
     
+    initializingRef.current = true;
     setLoading(true);
     
     try {
       const supabase = await getSupabase();
       
       // Set up auth state listener
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        (event, session) => {
-          setSession(session);
-          setUser(session?.user ?? null);
-          setLoading(false);
-        }
-      );
+      supabase.auth.onAuthStateChange((event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      });
 
       // Check for existing session
       const { data: { session: existingSession } } = await supabase.auth.getSession();
@@ -53,13 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(existingSession?.user ?? null);
       setInitialized(true);
       setLoading(false);
-
-      // Store subscription cleanup for potential future use
-      (window as any).__authSubscription = subscription;
     } catch (error) {
       console.error('Failed to initialize auth:', error);
       setLoading(false);
       setInitialized(true);
+    } finally {
+      initializingRef.current = false;
     }
   }, [initialized, getSupabase]);
 

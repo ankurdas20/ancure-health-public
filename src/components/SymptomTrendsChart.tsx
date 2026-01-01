@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useCallback, memo, useMemo } from 'react';
 import { TrendingUp, Lock, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,7 +37,7 @@ const SYMPTOM_LABELS: Record<string, string> = {
   nausea: 'Nausea',
 };
 
-export function SymptomTrendsChart() {
+export const SymptomTrendsChart = memo(function SymptomTrendsChart() {
   const { user, initializeAuth } = useAuth();
   const navigate = useNavigate();
   const [logs, setLogs] = useState<SymptomLog[]>([]);
@@ -60,7 +59,7 @@ export function SymptomTrendsChart() {
     }
   }, [user, supabase]);
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     if (!user || !supabase) return;
     
     setIsLoading(true);
@@ -77,10 +76,10 @@ export function SymptomTrendsChart() {
       setLogs(data);
     }
     setIsLoading(false);
-  };
+  }, [user, supabase]);
 
-  // Calculate symptom frequency
-  const symptomFrequency = () => {
+  // Memoize expensive calculations
+  const symptomFrequency = useMemo(() => {
     const counts: Record<string, number> = {};
     logs.forEach(log => {
       log.symptoms.forEach(symptom => {
@@ -96,10 +95,9 @@ export function SymptomTrendsChart() {
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 6);
-  };
+  }, [logs]);
 
-  // Prepare daily mood/energy trend data
-  const trendData = () => {
+  const trendData = useMemo(() => {
     const last14Days = Array.from({ length: 14 }, (_, i) => {
       const date = subDays(new Date(), 13 - i);
       return format(date, 'yyyy-MM-dd');
@@ -117,12 +115,12 @@ export function SymptomTrendsChart() {
         symptoms: log?.symptoms.length || 0,
       };
     });
-  };
+  }, [logs]);
 
-  const handleSignIn = async () => {
+  const handleSignIn = useCallback(async () => {
     await initializeAuth();
     navigate('/auth');
-  };
+  }, [initializeAuth, navigate]);
 
   // Show upgrade prompt for unauthenticated users
   if (!user) {
@@ -179,11 +177,7 @@ export function SymptomTrendsChart() {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex justify-center py-8">
-          <motion.div
-            className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          />
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </CardContent>
       </Card>
     );
@@ -207,9 +201,6 @@ export function SymptomTrendsChart() {
     );
   }
 
-  const freqData = symptomFrequency();
-  const trends = trendData();
-
   return (
     <Card variant="soft" className="overflow-hidden border border-border/50">
       <CardHeader className="pb-3">
@@ -227,7 +218,7 @@ export function SymptomTrendsChart() {
           <p className="text-sm font-medium mb-3">Mood & Energy (14 days)</p>
           <div className="h-32">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trends} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <AreaChart data={trendData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="moodGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
@@ -297,12 +288,12 @@ export function SymptomTrendsChart() {
         </div>
 
         {/* Symptom Frequency */}
-        {freqData.length > 0 && (
+        {symptomFrequency.length > 0 && (
           <div>
             <p className="text-sm font-medium mb-3">Most Common Symptoms</p>
             <div className="h-28">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={freqData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                <BarChart data={symptomFrequency} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
                   <XAxis type="number" hide />
                   <YAxis 
                     type="category" 
@@ -322,7 +313,7 @@ export function SymptomTrendsChart() {
                     formatter={(value: number) => [`${value} day${value > 1 ? 's' : ''}`, 'Logged']}
                   />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-                    {freqData.map((entry, index) => (
+                    {symptomFrequency.map((_, index) => (
                       <Cell 
                         key={`cell-${index}`} 
                         fill={`hsl(var(--primary) / ${1 - index * 0.12})`} 
@@ -337,4 +328,4 @@ export function SymptomTrendsChart() {
       </CardContent>
     </Card>
   );
-}
+});
