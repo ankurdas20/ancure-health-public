@@ -1,15 +1,27 @@
-import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, ReactNode, useMemo } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+
+interface UserProfile {
+  id: string;
+  user_id: string;
+  email: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  created_at: string;
+}
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  profile: UserProfile | null;
   loading: boolean;
   initialized: boolean;
+  isAuthenticated: boolean;
   initializeAuth: () => Promise<void>;
   signInWithMagicLink: (email: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,6 +29,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
   
@@ -33,6 +46,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return supabase;
   }, []);
 
+  // Fetch user profile from database
+  const fetchProfile = useCallback(async (userId: string) => {
+    try {
+      const supabase = await getSupabase();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+      return data as UserProfile;
+    } catch (error) {
+      console.error('Failed to fetch profile:', error);
+      return null;
+    }
+  }, [getSupabase]);
+
+  // Refresh profile data
+  const refreshProfile = useCallback(async () => {
+    if (user?.id) {
+      const profileData = await fetchProfile(user.id);
+      setProfile(profileData);
+    }
+  }, [user?.id, fetchProfile]);
+
   // Initialize auth - only called when user wants to sign in or access auth features
   const initializeAuth = useCallback(async () => {
     if (initialized || initializingRef.current) return;
@@ -48,12 +90,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        
+        // Fetch profile after auth state changes (deferred to avoid deadlock)
+        if (session?.user) {
+          setTimeout(() => {
+            fetchProfile(session.user.id).then(setProfile);
+          }, 0);
+        } else {
+          setProfile(null);
+        }
       });
 
       // Check for existing session
       const { data: { session: existingSession } } = await supabase.auth.getSession();
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
+      
+      // Fetch profile if user exists
+      if (existingSession?.user) {
+        const profileData = await fetchProfile(existingSession.user.id);
+        setProfile(profileData);
+      }
+      
       setInitialized(true);
       setLoading(false);
     } catch (error) {
@@ -63,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       initializingRef.current = false;
     }
-  }, [initialized, getSupabase]);
+  }, [initialized, getSupabase, fetchProfile]);
 
   const signInWithMagicLink = useCallback(async (email: string) => {
     const supabase = await getSupabase();
@@ -98,19 +156,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
+    setProfile(null);
   }, [getSupabase]);
 
+  // Memoize context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
+    user, 
+    session, 
+    profile,
+    loading, 
+    initialized,
+    isAuthenticated: !!user,
+    initializeAuth,
+    signInWithMagicLink,
+    signInWithGoogle,
+    signOut,
+    refreshProfile,
+  }), [user, session, profile, loading, initialized, initializeAuth, signInWithMagicLink, signInWithGoogle, signOut, refreshProfile]);
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      loading, 
-      initialized,
-      initializeAuth,
-      signInWithMagicLink,
-      signInWithGoogle,
-      signOut 
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

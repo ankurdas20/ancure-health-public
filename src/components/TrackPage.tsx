@@ -14,12 +14,13 @@ import {
   migrateLocalToCloud,
 } from "@/lib/storage";
 import { useAuth } from "@/contexts/AuthContext";
-import { ArrowLeft, LogIn, LogOut } from "lucide-react";
+import { UserMenu } from "@/components/UserMenu";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const TrackPage = memo(function TrackPage() {
   const navigate = useNavigate();
-  const { user, loading: authLoading, initialized, initializeAuth, signOut } = useAuth();
+  const { user, initialized, signOut } = useAuth();
 
   const [cycleData, setCycleData] = useState<CycleData | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
@@ -106,12 +107,6 @@ export const TrackPage = memo(function TrackPage() {
     }
   }, [signOut]);
 
-  const handleSignIn = useCallback(async () => {
-    // Initialize auth before navigating
-    await initializeAuth();
-    navigate("/auth");
-  }, [initializeAuth, navigate]);
-
   const insights = cycleData ? calculateCycleInsights(cycleData) : null;
 
   // Show loading only briefly for local data
@@ -131,24 +126,7 @@ export const TrackPage = memo(function TrackPage() {
             <ArrowLeft className="w-4 h-4" /> Back
           </Button>
           <Logo size="small" />
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={user ? handleSignOut : handleSignIn}
-            disabled={authLoading}
-          >
-            {user ? (
-              <>
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign out
-              </>
-            ) : (
-              <>
-                <LogIn className="w-4 h-4 mr-2" />
-                Sign in
-              </>
-            )}
-          </Button>
+          <UserMenu onSignIn={() => navigate("/auth")} />
         </header>
 
         <main>
