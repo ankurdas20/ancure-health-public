@@ -1,56 +1,65 @@
-import { lazy, Suspense } from 'react';
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
+import { useEffect, useState } from 'react'
+import { User } from '@supabase/supabase-js'
+import { supabase } from './supabase/client' // Adjust this path to where your client is
 
-// Lazy load pages for code splitting
-const Index = lazy(() => import("./pages/Index"));
-const Track = lazy(() => import("./pages/Track"));
-const Auth = lazy(() => import("./pages/Auth"));
-const AncureOneWelcome = lazy(() => import("./pages/AncureOneWelcome"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+function App() {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
-// Minimal loading fallback
-const PageLoader = () => (
-  <div className="min-h-screen bg-background flex items-center justify-center">
-    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-  </div>
-);
+  useEffect(() => {
+    // 1. Check for an existing session on mount
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      setUser(session?.user ?? null)
+      setLoading(false)
+    }
 
-// Create query client outside component to prevent recreation
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 30, // 30 minutes (formerly cacheTime)
-    },
-  },
-});
+    checkUser()
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/track" element={<Track />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/ancure-one-welcome" element={<AncureOneWelcome />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+    // 2. Listen for the OAuth redirect login
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
 
-export default App;
+    return () => subscription.unsubscribe()
+  }, [])
+
+  if (loading) {
+    return <div style={{ display: 'flex', justifyContent: 'center', marginTop: '50px' }}>Loading...</div>
+  }
+
+  return (
+    <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'sans-serif' }}>
+      {user ? (
+        <div>
+          <h2>🏥 Ancure Health Dashboard</h2>
+          <p>Welcome back, <strong>{user.user_metadata?.full_name || user.email}</strong></p>
+          <div style={{ margin: '20px', padding: '15px', border: '1px solid #ddd', borderRadius: '8px' }}>
+             <p>Email: {user.email}</p>
+             <p>User ID: {user.id}</p>
+          </div>
+          <button 
+            onClick={() => supabase.auth.signOut()}
+            style={{ padding: '10px 20px', backgroundColor: '#ff4444', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+          >
+            Logout
+          </button>
+        </div>
+      ) : (
+        <div>
+          <h1>Ancure Health</h1>
+          <p>Please sign in to access your medical records.</p>
+          <button 
+            onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
+            style={{ padding: '12px 24px', fontSize: '16px', backgroundColor: '#4285F4', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+          >
+            Sign in with Google
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default App
