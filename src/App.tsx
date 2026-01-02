@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from './integrations/supabase/client'
-import Index from './pages/Index' // This is your actual landing page
-import Dashboard from './components/Dashboard' // Your health dashboard
+import Index from './pages/Index' // Keep this as is if Index is a default export
+import { Dashboard } from './components/Dashboard' // ADD CURLY BRACES HERE
 
 function App() {
   const [user, setUser] = useState<User | null>(null)
