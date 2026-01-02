@@ -115,14 +115,25 @@ export function CycleInputForm({ onSubmit, initialData }: CycleInputFormProps) {
   } = await supabase.auth.getUser();
 
   if (user) {
-    // Save cycle data
-    await supabase.from('cycle_history').upsert({
+  const { data: inserted, error } = await supabase
+    .from('cycle_history')
+    .insert({
       user_id: user.id,
       cycle_length: data.cycleLength,
       last_period: data.lastPeriodDate,
       symptoms: data.symptoms,
-      created_at: new Date().toISOString(),
-    });
+    })
+    .select();
+
+  console.log("SUPABASE INSERT RESULT:", inserted);
+  console.log("SUPABASE INSERT ERROR:", error);
+
+  if (error) {
+    alert("SAVE FAILED: " + error.message);
+  } else {
+    alert("SAVE SUCCESS");
+  }
+}
 
     // Save basic profile
     await supabase.from('profiles').upsert({
