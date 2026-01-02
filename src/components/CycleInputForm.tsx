@@ -57,7 +57,6 @@ export function CycleInputForm({ onSubmit, initialData }: CycleInputFormProps) {
       .single();
 
     if (data) {
-      setAge(data.age?.toString() || '');
       setCycleLength(data.cycle_length?.toString() || '28');
       setLastPeriodDate(data.last_period || '');
       setSelectedSymptoms(data.symptoms || []);
@@ -114,26 +113,33 @@ export function CycleInputForm({ onSubmit, initialData }: CycleInputFormProps) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user) {
-  const { data: inserted, error } = await supabase
+  if (!user) {
+    alert("NO USER SESSION");
+    return;
+  }
+
+  const { error } = await supabase
     .from('cycle_history')
     .insert({
       user_id: user.id,
       cycle_length: data.cycleLength,
       last_period: data.lastPeriodDate,
       symptoms: data.symptoms,
-    })
-    .select();
-
-  console.log("SUPABASE INSERT RESULT:", inserted);
-  console.log("SUPABASE INSERT ERROR:", error);
+    });
 
   if (error) {
     alert("SAVE FAILED: " + error.message);
-  } else {
-    alert("SAVE SUCCESS");
+    return;
   }
-}
+
+  await supabase.from('profiles').upsert({
+    id: user.id,
+    age: data.age,
+  });
+
+  alert("SAVE SUCCESS");
+  onSubmit(data);
+};
 
     // Save basic profile
     await supabase.from('profiles').upsert({
@@ -450,6 +456,6 @@ export function CycleInputForm({ onSubmit, initialData }: CycleInputFormProps) {
           See My Insights
         </Button>
       </motion.div>
-    </motion.form>
+        </motion.form>
   );
 }
