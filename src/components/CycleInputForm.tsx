@@ -110,15 +110,18 @@ export function CycleInputForm({ onSubmit, initialData }: CycleInputFormProps) {
   };
 
   const {
-    data: { user },
+    data: authData,
+    error: authError,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (authError || !authData?.user) {
     alert("NO USER SESSION");
     return;
   }
 
-  const { error } = await supabase
+  const user = authData.user;
+
+  const { error: cycleError } = await supabase
     .from('cycle_history')
     .insert({
       user_id: user.id,
@@ -127,15 +130,22 @@ export function CycleInputForm({ onSubmit, initialData }: CycleInputFormProps) {
       symptoms: data.symptoms,
     });
 
-  if (error) {
-    alert("SAVE FAILED: " + error.message);
+  if (cycleError) {
+    alert("SAVE FAILED: " + cycleError.message);
     return;
   }
 
-  await supabase.from('profiles').upsert({
-    id: user.id,
-    age: data.age,
-  });
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .upsert({
+      id: user.id,
+      age: data.age,
+    });
+
+  if (profileError) {
+    alert("PROFILE SAVE FAILED: " + profileError.message);
+    return;
+  }
 
   alert("SAVE SUCCESS");
   onSubmit(data);
