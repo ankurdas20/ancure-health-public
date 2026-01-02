@@ -151,11 +151,6 @@ export function CycleInputForm({ onSubmit, initialData }: CycleInputFormProps) {
   onSubmit(data);
 };
 
-    // Save basic profile
-    await supabase.from('profiles').upsert({
-      id: user.id,
-      age: data.age,
-    });
   }
 
   onSubmit(data);
