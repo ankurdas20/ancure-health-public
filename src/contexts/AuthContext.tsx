@@ -8,6 +8,7 @@ interface AuthContextType {
   initialized: boolean;
   initializeAuth: () => Promise<void>;
   signInWithMagicLink: (email: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -78,6 +79,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   }, [getSupabase]);
 
+  const signInWithGoogle = useCallback(async () => {
+    const supabase = await getSupabase();
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+      },
+    });
+    
+    return { error };
+  }, [getSupabase]);
+
   const signOut = useCallback(async () => {
     const supabase = await getSupabase();
     await supabase.auth.signOut();
@@ -92,7 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading, 
       initialized,
       initializeAuth,
-      signInWithMagicLink, 
+      signInWithMagicLink,
+      signInWithGoogle,
       signOut 
     }}>
       {children}
