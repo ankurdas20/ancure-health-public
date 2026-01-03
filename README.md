@@ -1,71 +1,75 @@
 # Ancure Health
 
-A menstrual cycle tracking application built with React, TypeScript, and Supabase.
+A privacy-first menstrual cycle tracking application that helps users understand their body's patterns, estimate fertile windows, and log daily symptoms — all while keeping data secure and private.
 
-## Features
-
-- 📅 Cycle tracking and predictions
-- 📊 Symptom logging and trends
-- 🔐 Secure authentication (Email & Google OAuth)
-- 📱 Responsive design for mobile and desktop
-- ☁️ Cloud sync across devices
-
-## Tech Stack
-
-- **Frontend:** React, TypeScript, Vite, Tailwind CSS
-- **UI Components:** shadcn/ui, Radix UI
-- **Backend:** Supabase (Auth, Database, Storage)
-- **Deployment:** Cloudflare Pages
+![Ancure Health](https://img.shields.io/badge/Status-Production%20Ready-success)
+![React](https://img.shields.io/badge/React-18.3-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
+![Vite](https://img.shields.io/badge/Vite-5.0-purple)
 
 ---
 
-## Quick Start
+## ✨ Features
+
+### Core Tracking
+- 📅 **Cycle Predictions** - Accurate period and ovulation date estimates
+- 🌸 **Phase Tracking** - Know your current cycle phase (menstrual, follicular, ovulation, luteal)
+- 📊 **Symptom Logging** - Daily symptom, mood, and energy tracking
+- 📈 **Trend Analysis** - Visualize patterns over time with charts
+
+### User Experience  
+- 🔐 **Secure Authentication** - Magic link email and Google OAuth
+- ☁️ **Cloud Sync** - Data syncs across all your devices
+- 📱 **Responsive Design** - Beautiful on mobile, tablet, and desktop
+- 🎨 **Modern UI** - Clean, intuitive interface with smooth animations
+
+### Privacy & Security
+- 🔒 **Row Level Security** - Your data is protected at the database level
+- 🚫 **No Account Required** - Use guest mode with local storage
+- 🛡️ **Privacy-First** - No tracking, no ads, your data stays yours
+
+---
+
+## 🛠 Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| **Framework** | React 18 with TypeScript |
+| **Build Tool** | Vite 5 |
+| **Styling** | Tailwind CSS 3 |
+| **UI Components** | shadcn/ui + Radix UI |
+| **Animations** | Framer Motion |
+| **Backend** | Supabase (Auth, Database) |
+| **Charts** | Recharts |
+| **Deployment** | Cloudflare Pages |
+
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
 - Node.js 18+ ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
-- npm or bun
-- A Supabase project
+- npm or bun package manager
 
-### 1. Clone the Repository
+### Installation
 
 ```bash
+# Clone the repository
 git clone <YOUR_GIT_URL>
 cd ancure-health
-```
 
-### 2. Install Dependencies
-
-```bash
+# Install dependencies
 npm install
-```
 
-### 3. Configure Environment Variables
-
-Copy the example environment file:
-
-```bash
+# Copy environment template
 cp .env.example .env
-```
 
-Edit `.env` and add your Supabase credentials:
+# Add your Supabase credentials to .env
+# VITE_SUPABASE_URL=https://your-project.supabase.co
+# VITE_SUPABASE_ANON_KEY=your-anon-key
 
-```env
-# Required - Get these from Supabase Dashboard → Settings → API
-VITE_SUPABASE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key-here
-```
-
-**Where to find these values:**
-1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
-2. Select your project
-3. Navigate to **Settings** → **API**
-4. Copy the **Project URL** → `VITE_SUPABASE_URL`
-5. Copy the **anon public** key → `VITE_SUPABASE_ANON_KEY`
-
-### 4. Start Development Server
-
-```bash
+# Start development server
 npm run dev
 ```
 
@@ -73,97 +77,161 @@ The app will be available at `http://localhost:8080`
 
 ---
 
-## Available Scripts
+## 📜 Available Scripts
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
+| `npm run dev` | Start development server with HMR |
+| `npm run build` | Build optimized production bundle |
 | `npm run preview` | Preview production build locally |
-| `npm run lint` | Run ESLint |
+| `npm run lint` | Run ESLint for code quality |
 
 ---
 
-## Deployment
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed Cloudflare Pages deployment instructions.
-
-### Quick Deploy to Cloudflare Pages
-
-1. Push your code to GitHub
-2. Connect repository to Cloudflare Pages
-3. Set build settings:
-   - **Build command:** `npm run build`
-   - **Output directory:** `dist`
-   - **Framework preset:** Vite
-4. Add environment variables in Cloudflare Pages settings
-5. Deploy!
-
----
-
-## Project Structure
+## 📁 Project Structure
 
 ```
-src/
-├── components/       # React components
-│   ├── ui/          # shadcn/ui components
-│   └── ...          # Feature components
-├── contexts/        # React contexts (Auth, etc.)
-├── hooks/           # Custom React hooks
-├── integrations/    # External service integrations
-│   └── supabase/   # Supabase client & types
-├── lib/             # Utility functions
-├── pages/           # Page components
-└── assets/          # Static assets
+ancure-health/
+├── public/
+│   ├── _redirects          # SPA routing for Cloudflare
+│   └── favicon.ico
+├── src/
+│   ├── assets/             # Images and static files
+│   ├── components/
+│   │   ├── ui/             # shadcn/ui components
+│   │   ├── Dashboard.tsx   # Main dashboard
+│   │   ├── CycleRing.tsx   # Cycle visualization
+│   │   └── ...
+│   ├── contexts/
+│   │   └── AuthContext.tsx # Authentication state
+│   ├── hooks/              # Custom React hooks
+│   ├── integrations/
+│   │   └── supabase/       # Supabase client & types
+│   ├── lib/
+│   │   ├── cycleCalculations.ts  # Cycle math
+│   │   ├── storage.ts            # Data persistence
+│   │   └── supabaseHelpers.ts    # Error handling
+│   ├── pages/              # Route components
+│   ├── App.tsx             # App entry with providers
+│   └── main.tsx            # React DOM entry
+├── .env.example            # Environment template
+├── DEPLOYMENT.md           # Deployment guide
+├── TROUBLESHOOTING.md      # Common issues & solutions
+├── SECURITY.md             # Security documentation
+├── PRE_DEPLOYMENT_CHECKLIST.md
+└── README.md
 ```
 
 ---
 
-## Authentication Setup
-
-### Email Magic Link
-Works out of the box with Supabase configuration.
-
-### Google OAuth
-1. Create OAuth credentials in [Google Cloud Console](https://console.cloud.google.com)
-2. Add credentials to Supabase → Authentication → Providers → Google
-3. Configure authorized origins and redirect URIs
-
-See [Supabase Google Auth Docs](https://supabase.com/docs/guides/auth/social-login/auth-google) for details.
-
----
-
-## Development with Lovable
-
-This project is built with [Lovable](https://lovable.dev). You can:
-
-- Edit directly in Lovable's visual editor
-- Make changes locally and push to sync
-- Use the two-way GitHub sync
-
----
-
-## Environment Variables
+## 🔐 Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `VITE_SUPABASE_URL` | ✅ | Supabase project URL |
+| `VITE_SUPABASE_URL` | ✅ | Your Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | ✅ | Supabase anonymous/public API key |
 
-> **Note:** Never commit your `.env` file. Use `.env.example` as a template.
+**Important:** 
+- Variables must be prefixed with `VITE_` for Vite to expose them
+- Never commit your `.env` file (it's in `.gitignore`)
+- Use `.env.example` as a template
 
 ---
 
-## Troubleshooting
+## 🌐 Deployment
 
-Having issues? Check out [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for solutions to common problems:
+### Cloudflare Pages (Recommended)
+
+See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for complete step-by-step instructions.
+
+**Quick Deploy:**
+1. Push code to GitHub
+2. Connect to Cloudflare Pages
+3. Configure build settings:
+   - Build command: `npm run build`
+   - Output directory: `dist`
+4. Add environment variables
+5. Deploy!
+
+### Pre-Deployment
+
+Review **[PRE_DEPLOYMENT_CHECKLIST.md](./PRE_DEPLOYMENT_CHECKLIST.md)** before going live.
+
+---
+
+## 🔒 Security
+
+This app implements multiple layers of security:
+
+- **Row Level Security (RLS)** on all database tables
+- **Authentication** via Supabase Auth
+- **Session management** with automatic token refresh
+- **Input validation** on all forms
+- **Error boundaries** for graceful error handling
+
+See **[SECURITY.md](./SECURITY.md)** for detailed security documentation.
+
+---
+
+## 🐛 Troubleshooting
+
+Having issues? Check **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** for solutions to:
+
 - Environment variables not loading
 - 404 errors on routes after deployment
 - User data not syncing
 - Build failures
+- Authentication issues
 
 ---
 
-## License
+## 🤝 Development
+
+### With Lovable
+
+This project is built with [Lovable](https://lovable.dev):
+- Edit directly in Lovable's visual editor
+- Changes sync automatically to GitHub
+- Two-way sync with local development
+
+### Local Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+---
+
+## 📄 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | Cloudflare Pages deployment guide |
+| [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) | Common issues and solutions |
+| [SECURITY.md](./SECURITY.md) | Security implementation details |
+| [PRE_DEPLOYMENT_CHECKLIST.md](./PRE_DEPLOYMENT_CHECKLIST.md) | Pre-launch verification |
+
+---
+
+## ⚖️ License
 
 Private - All rights reserved.
+
+---
+
+## 🙏 Acknowledgments
+
+- [shadcn/ui](https://ui.shadcn.com/) for beautiful UI components
+- [Supabase](https://supabase.com/) for backend infrastructure
+- [Tailwind CSS](https://tailwindcss.com/) for styling
+- [Framer Motion](https://www.framer.com/motion/) for animations

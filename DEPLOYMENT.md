@@ -168,8 +168,132 @@ Once connected, Cloudflare Pages will automatically:
 
 ---
 
+## Post-Deployment Steps
+
+### 1. Verify Deployment
+
+After your first successful deployment:
+
+1. Visit your production URL (e.g., `https://ancure-health.pages.dev`)
+2. Test the following:
+   - [ ] Landing page loads correctly
+   - [ ] Navigate to /track works
+   - [ ] Navigate to /auth works
+   - [ ] Direct URL access works (no 404s)
+   - [ ] Magic link authentication works
+   - [ ] Data saves and persists
+
+### 2. Add Custom Domain
+
+1. In Cloudflare Pages, go to **Custom domains**
+2. Click **Set up a custom domain**
+3. Enter your domain (e.g., `app.ancure.health`)
+4. Follow DNS configuration:
+   - For apex domain: Add CNAME record pointing to `ancure-health.pages.dev`
+   - For subdomain: Add CNAME record pointing to `ancure-health.pages.dev`
+5. Wait for SSL certificate provisioning (usually automatic)
+
+**Important:** After adding a custom domain, update Supabase:
+- Add the new domain to Site URL
+- Add the new domain to Redirect URLs
+
+### 3. Enable Cloudflare Analytics
+
+1. Go to your Cloudflare Pages project
+2. Click **Analytics** tab
+3. View metrics:
+   - **Web Analytics**: Page views, visitors, countries
+   - **Real User Metrics**: Core Web Vitals (LCP, FID, CLS)
+   - **Requests**: Total requests, bandwidth, cache hit ratio
+
+For more detailed analytics:
+1. Go to Cloudflare Dashboard → **Analytics & Logs**
+2. Select **Web Analytics**
+3. Enable for your domain
+
+### 4. Monitor Supabase Logs
+
+To check for errors in your backend:
+
+1. Go to Supabase Dashboard → **Logs**
+2. Select log type:
+   - **Postgres logs**: Database queries and errors
+   - **Auth logs**: Authentication events and errors
+   - **API logs**: REST API requests
+
+**Common things to monitor:**
+- Failed authentication attempts
+- RLS policy violations
+- Slow queries
+- Error rates
+
+To access via Lovable Cloud:
+```xml
+<presentation-actions>
+  <presentation-open-backend>View Backend</presentation-open-backend>
+</presentation-actions>
+```
+
+### 5. Set Up Alerts (Optional)
+
+In Cloudflare:
+1. Go to **Notifications**
+2. Create alerts for:
+   - Deployment failures
+   - Origin error rate spikes
+   - Traffic anomalies
+
+In Supabase:
+1. Go to **Settings** → **Logs & Analytics**
+2. Enable **Database Health Reports**
+
+### 6. Performance Optimization
+
+**Cloudflare Caching:**
+- Static assets are cached automatically
+- Configure cache rules in **Rules** → **Cache Rules**
+
+**Recommended settings:**
+- Enable **Auto Minify** (HTML, CSS, JS)
+- Enable **Brotli compression**
+- Set appropriate cache TTLs for static assets
+
+---
+
+## Production Checklist
+
+Before announcing your app:
+
+- [ ] All authentication methods tested
+- [ ] Data saves correctly for logged-in users
+- [ ] Email templates customized in Supabase
+- [ ] Custom domain configured with SSL
+- [ ] Analytics enabled and working
+- [ ] Error monitoring in place
+- [ ] Backup strategy for database (Supabase handles this)
+- [ ] Rate limiting configured if needed
+
+---
+
+## Rollback Procedure
+
+If something goes wrong:
+
+1. **Cloudflare Pages**: 
+   - Go to **Deployments**
+   - Find the last working deployment
+   - Click **...** → **Rollback to this deployment**
+
+2. **Supabase (database)**:
+   - Daily backups are automatic
+   - Contact Supabase support for point-in-time recovery
+
+---
+
 ## Support
 
 - [Cloudflare Pages Docs](https://developers.cloudflare.com/pages/)
+- [Cloudflare Community](https://community.cloudflare.com/)
 - [Supabase Docs](https://supabase.com/docs)
+- [Supabase Discord](https://discord.supabase.com/)
 - [Vite Deployment Guide](https://vitejs.dev/guide/static-deploy.html#cloudflare-pages)
