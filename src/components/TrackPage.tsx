@@ -15,12 +15,15 @@ import {
 } from "@/lib/storage";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserMenu } from "@/components/UserMenu";
+import { ConnectionIndicator } from "@/components/ConnectionStatus";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 export const TrackPage = memo(function TrackPage() {
   const navigate = useNavigate();
   const { user, initialized, signOut } = useAuth();
+  const { toast } = useToast();
 
   const [cycleData, setCycleData] = useState<CycleData | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
@@ -67,11 +70,18 @@ export const TrackPage = memo(function TrackPage() {
     
     // If user is authenticated, also save to cloud
     if (user) {
-      await saveCloudCycleData(user.id, data);
+      const { error } = await saveCloudCycleData(user.id, data);
+      if (error) {
+        toast({
+          title: "Sync issue",
+          description: "Data saved locally but couldn't sync to cloud. Will retry later.",
+          variant: "destructive",
+        });
+      }
     }
     
     setShowDashboard(true);
-  }, [user]);
+  }, [user, toast]);
 
   const handleReset = useCallback(() => {
     setHasReset(true);
@@ -90,9 +100,16 @@ export const TrackPage = memo(function TrackPage() {
     
     // Sync to cloud if authenticated
     if (user) {
-      await saveCloudCycleData(user.id, updatedData);
+      const { error } = await saveCloudCycleData(user.id, updatedData);
+      if (error) {
+        toast({
+          title: "Sync issue",
+          description: "Period logged locally but couldn't sync to cloud.",
+          variant: "destructive",
+        });
+      }
     }
-  }, [cycleData, user]);
+  }, [cycleData, user, toast]);
 
   const handleSignOut = useCallback(async () => {
     await signOut();
@@ -125,7 +142,10 @@ export const TrackPage = memo(function TrackPage() {
           <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-2">
             <ArrowLeft className="w-4 h-4" /> Back
           </Button>
-          <Logo size="small" />
+          <div className="flex items-center gap-3">
+            <Logo size="small" />
+            {user && <ConnectionIndicator />}
+          </div>
           <UserMenu onSignIn={() => navigate("/auth")} />
         </header>
 

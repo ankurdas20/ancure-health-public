@@ -95,19 +95,28 @@ export const SymptomLogger = memo(function SymptomLogger({ onLogSuccess }: Sympt
   const checkTodayLog = useCallback(async () => {
     if (!user || !supabase) return;
     
-    const { data } = await supabase
-      .from('symptom_logs')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('log_date', today)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('symptom_logs')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('log_date', today)
+        .maybeSingle();
 
-    if (data) {
-      setTodayLogged(true);
-      setSelectedSymptoms(data.symptoms || []);
-      setSelectedMood(data.mood);
-      setSelectedEnergy(data.energy_level);
-      setNotes(data.notes || '');
+      if (error) {
+        console.error('[SymptomLogger] Check today error:', error);
+        return;
+      }
+
+      if (data) {
+        setTodayLogged(true);
+        setSelectedSymptoms(data.symptoms || []);
+        setSelectedMood(data.mood);
+        setSelectedEnergy(data.energy_level);
+        setNotes(data.notes || '');
+      }
+    } catch (err) {
+      console.error('[SymptomLogger] Check today error:', err);
     }
   }, [user, supabase, today]);
 

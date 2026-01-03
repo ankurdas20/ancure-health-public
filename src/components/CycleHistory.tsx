@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, memo } from 'react';
 import { motion } from 'framer-motion';
-import { History, Calendar, TrendingUp, ChevronDown, ChevronUp, Lock, LogIn } from 'lucide-react';
+import { History, Calendar, TrendingUp, ChevronDown, ChevronUp, Lock, LogIn, AlertCircle, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import { safeQuery, getUserFriendlyError } from '@/lib/supabaseHelpers';
 
 interface PeriodLog {
   id: string;
@@ -36,6 +37,7 @@ export const CycleHistory = memo(function CycleHistory({ currentCycleLength }: C
   const [symptomLogs, setSymptomLogs] = useState<SymptomLog[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [supabase, setSupabase] = useState<any>(null);
 
   // Lazy load supabase only when user is authenticated
@@ -57,30 +59,39 @@ export const CycleHistory = memo(function CycleHistory({ currentCycleLength }: C
     if (!user || !supabase) return;
     
     setIsLoading(true);
+    setError(null);
     
-    const [periodResult, symptomResult] = await Promise.all([
-      supabase
-        .from('period_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('start_date', { ascending: false })
-        .limit(12),
-      supabase
-        .from('symptom_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('log_date', { ascending: false })
-        .limit(30)
-    ]);
+    try {
+      const [periodResult, symptomResult] = await Promise.all([
+        supabase
+          .from('period_logs')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('start_date', { ascending: false })
+          .limit(12),
+        supabase
+          .from('symptom_logs')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('log_date', { ascending: false })
+          .limit(30)
+      ]);
 
-    if (periodResult.data) {
-      setPeriodLogs(periodResult.data);
+      if (periodResult.error) {
+        throw periodResult.error;
+      }
+      if (symptomResult.error) {
+        throw symptomResult.error;
+      }
+
+      setPeriodLogs(periodResult.data || []);
+      setSymptomLogs(symptomResult.data || []);
+    } catch (err) {
+      console.error('[CycleHistory] Load error:', err);
+      setError(getUserFriendlyError(err));
+    } finally {
+      setIsLoading(false);
     }
-    if (symptomResult.data) {
-      setSymptomLogs(symptomResult.data);
-    }
-    
-    setIsLoading(false);
   }, [user, supabase]);
 
   const calculateAverageCycleLength = useCallback(() => {
@@ -188,6 +199,22 @@ export const CycleHistory = memo(function CycleHistory({ currentCycleLength }: C
             <div
               className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"
             />
+          </div>
+        ) : error ? (
+          <div className="text-center py-4 space-y-3">
+            <div className="flex items-center justify-center gap-2 text-destructive">
+              <AlertCircle className="w-4 h-4" />
+              <p className="text-sm">{error}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={loadHistory}
+              className="gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Try Again
+            </Button>
           </div>
         ) : periodLogs.length === 0 && symptomLogs.length === 0 ? (
           <div className="text-center py-4">
