@@ -162,8 +162,6 @@ CREATE POLICY "Allow public read access to published blogs" ON public.blogs FOR 
 
 CREATE POLICY "Allow users to read their own profile" ON public.profiles FOR SELECT USING ((auth.uid() = user_id));
 
-CREATE POLICY "Enable read access for all users" ON public.blogs FOR SELECT USING (true);
-
 ALTER TABLE public.blog_categories ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.blog_tag_relations ENABLE ROW LEVEL SECURITY;
