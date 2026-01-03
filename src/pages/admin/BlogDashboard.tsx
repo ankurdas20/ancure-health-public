@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAdminBlogs, useDeleteBlog, useCategories } from '@/hooks/useBlogs';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-export default function BlogDashboard() {
+const BlogDashboard = forwardRef<HTMLDivElement>(function BlogDashboard(_, ref) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [search, setSearch] = useState('');
@@ -75,7 +75,7 @@ export default function BlogDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div ref={ref} className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -262,4 +262,6 @@ export default function BlogDashboard() {
       </div>
     </div>
   );
-}
+});
+
+export default BlogDashboard;

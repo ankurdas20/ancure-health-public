@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -64,7 +64,7 @@ const blogSchema = z.object({
 
 type BlogFormData = z.infer<typeof blogSchema>;
 
-export default function BlogEditor() {
+const BlogEditor = forwardRef<HTMLDivElement>(function BlogEditor(_, ref) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -230,7 +230,7 @@ export default function BlogEditor() {
   const isPublished = form.watch('is_published');
 
   return (
-    <div className="min-h-screen bg-background">
+    <div ref={ref} className="min-h-screen bg-background">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           {/* Header */}
@@ -563,4 +563,6 @@ export default function BlogEditor() {
       </Form>
     </div>
   );
-}
+});
+
+export default BlogEditor;
