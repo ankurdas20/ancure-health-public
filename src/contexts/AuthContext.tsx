@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef, ReactNode, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode, useMemo } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 
 interface UserProfile {
@@ -32,12 +32,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start as true to check session
   const [initialized, setInitialized] = useState(false);
   
   // Use ref to store supabase client to avoid re-renders
   const supabaseRef = useRef<typeof import('@/integrations/supabase/client').supabase | null>(null);
   const initializingRef = useRef(false);
+  const mountedRef = useRef(true);
 
   // Lazy-load Supabase only when needed
   const getSupabase = useCallback(async () => {
@@ -80,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Store subscription ref for cleanup
   const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
 
-  // Initialize auth - only called when user wants to sign in or access auth features
+  // Initialize auth - called automatically on mount
   const initializeAuth = useCallback(async () => {
     if (initialized || initializingRef.current) return;
     
@@ -92,15 +93,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Set up auth state listener FIRST (before checking session)
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (!mountedRef.current) return;
+        
         // Only synchronous state updates in callback
         setSession(session);
         setUser(session?.user ?? null);
-        setLoading(false);
         
         // Defer Supabase calls to prevent deadlock
         if (session?.user) {
           setTimeout(() => {
-            fetchProfile(session.user.id).then(setProfile);
+            if (mountedRef.current) {
+              fetchProfile(session.user.id).then((profileData) => {
+                if (mountedRef.current) setProfile(profileData);
+              });
+            }
           }, 0);
         } else {
           setProfile(null);
@@ -112,25 +118,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // THEN check for existing session
       const { data: { session: existingSession } } = await supabase.auth.getSession();
+      
+      if (!mountedRef.current) return;
+      
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
       
       // Fetch profile if user exists
       if (existingSession?.user) {
         const profileData = await fetchProfile(existingSession.user.id);
-        setProfile(profileData);
+        if (mountedRef.current) setProfile(profileData);
       }
       
       setInitialized(true);
       setLoading(false);
     } catch (error) {
       console.error('Failed to initialize auth:', error);
-      setLoading(false);
-      setInitialized(true);
+      if (mountedRef.current) {
+        setLoading(false);
+        setInitialized(true);
+      }
     } finally {
       initializingRef.current = false;
     }
   }, [initialized, getSupabase, fetchProfile]);
+
+  // Auto-initialize auth on mount
+  useEffect(() => {
+    mountedRef.current = true;
+    initializeAuth();
+    
+    return () => {
+      mountedRef.current = false;
+      cleanup();
+    };
+  }, []);
 
   // Cleanup subscription on unmount
   const cleanup = useCallback(() => {
