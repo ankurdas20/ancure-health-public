@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from "./contexts/AuthContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AdminRoute } from "./components/AdminRoute";
 
 // Lazy load pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -73,21 +73,21 @@ const App = () => (
                   <Route path="/blogs/:slug" element={<BlogPost />} />
                   <Route path="/blogs/category/:slug" element={<BlogCategory />} />
                   
-                  {/* Admin Blog Routes (Protected) */}
+                  {/* Admin Blog Routes (Admin Only) */}
                   <Route path="/admin/blogs" element={
-                    <ProtectedRoute>
+                    <AdminRoute>
                       <BlogDashboard />
-                    </ProtectedRoute>
+                    </AdminRoute>
                   } />
                   <Route path="/admin/blogs/new" element={
-                    <ProtectedRoute>
+                    <AdminRoute>
                       <BlogEditor />
-                    </ProtectedRoute>
+                    </AdminRoute>
                   } />
                   <Route path="/admin/blogs/edit/:id" element={
-                    <ProtectedRoute>
+                    <AdminRoute>
                       <BlogEditor />
-                    </ProtectedRoute>
+                    </AdminRoute>
                   } />
                   
                   <Route path="*" element={<NotFound />} />
