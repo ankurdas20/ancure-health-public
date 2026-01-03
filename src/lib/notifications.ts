@@ -1,4 +1,7 @@
-// Browser notification utilities
+/**
+ * Browser notification utilities for period and fertility reminders
+ * @module notifications
+ */
 
 const NOTIFICATION_KEY = 'ancure_notification_settings';
 
@@ -16,14 +19,18 @@ export interface ScheduledNotification {
   message: string;
 }
 
+/**
+ * Retrieves notification settings from localStorage
+ * @returns Current notification settings or defaults
+ */
 export function getNotificationSettings(): NotificationSettings {
   try {
     const stored = localStorage.getItem(NOTIFICATION_KEY);
     if (stored) {
       return JSON.parse(stored);
     }
-  } catch (error) {
-    console.error('Failed to load notification settings:', error);
+  } catch {
+    // Silently fail - will return defaults
   }
   return {
     enabled: false,
@@ -33,17 +40,24 @@ export function getNotificationSettings(): NotificationSettings {
   };
 }
 
+/**
+ * Saves notification settings to localStorage
+ * @param settings - The settings to save
+ */
 export function saveNotificationSettings(settings: NotificationSettings): void {
   try {
     localStorage.setItem(NOTIFICATION_KEY, JSON.stringify(settings));
-  } catch (error) {
-    console.error('Failed to save notification settings:', error);
+  } catch {
+    // Silently fail - storage might be full or disabled
   }
 }
 
+/**
+ * Requests browser notification permission from the user
+ * @returns Promise resolving to true if permission granted
+ */
 export async function requestNotificationPermission(): Promise<boolean> {
   if (!('Notification' in window)) {
-    console.log('This browser does not support notifications');
     return false;
   }
 

@@ -154,6 +154,16 @@ This project is built with [Lovable](https://lovable.dev). You can:
 
 ---
 
+## Troubleshooting
+
+Having issues? Check out [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for solutions to common problems:
+- Environment variables not loading
+- 404 errors on routes after deployment
+- User data not syncing
+- Build failures
+
+---
+
 ## License
 
 Private - All rights reserved.
