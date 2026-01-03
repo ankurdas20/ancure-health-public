@@ -7,6 +7,7 @@ interface UserProfile {
   email: string | null;
   full_name: string | null;
   avatar_url: string | null;
+  phone_number: string | null;
   created_at: string;
 }
 
