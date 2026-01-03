@@ -1,288 +1,299 @@
-# Deployment Guide: Firebase Hosting + Supabase Backend
+# Deploying Ancure Health to Cloudflare Pages
 
-This guide covers deploying your Ancure Health application with:
-- **Frontend**: Firebase Hosting (React/Vite app)
-- **Backend**: Supabase (via Lovable Cloud - database, auth, storage)
-
-## Architecture Overview
-
-```
-┌─────────────────────┐     ┌─────────────────────┐
-│   Firebase Hosting  │────▶│      Supabase       │
-│   (React Frontend)  │     │  (Backend/Database) │
-└─────────────────────┘     └─────────────────────┘
-         │                           │
-         │ Serves static files       │ Handles:
-         │ (HTML, JS, CSS)           │ - Authentication
-         │                           │ - Database (PostgreSQL)
-         │                           │ - File Storage
-         │                           │ - Edge Functions
-         └───────────────────────────┘
-```
+This guide covers deploying the Ancure Health app to Cloudflare Pages with Supabase backend.
 
 ## Prerequisites
 
-1. **Node.js** (v18 or higher)
-2. **Firebase CLI**: `npm install -g firebase-tools`
-3. **Firebase Account**: [console.firebase.google.com](https://console.firebase.google.com)
-4. **Supabase Project**: Already connected via Lovable Cloud
+- A [Cloudflare](https://cloudflare.com) account
+- A [Supabase](https://supabase.com) project (already configured)
+- Your repository pushed to GitHub
 
 ---
 
-## Step 1: Install Firebase CLI
+## Step 1: Connect to Cloudflare Pages
 
-```bash
-npm install -g firebase-tools
-```
-
-## Step 2: Login to Firebase
-
-```bash
-firebase login
-```
-
-## Step 3: Initialize Firebase in Your Project
-
-Run this from your project root:
-
-```bash
-firebase init hosting
-```
-
-When prompted:
-- **Project**: Select or create a Firebase project
-- **Public directory**: `dist` (Vite build output)
-- **Single-page app**: `Yes`
-- **GitHub Actions**: `No` (optional - can set up later)
-- **Overwrite index.html**: `No`
-
-## Step 4: Firebase Configuration
-
-The `firebase.json` file is already configured in this project:
-
-```json
-{
-  "hosting": {
-    "public": "dist",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [{ "source": "**", "destination": "/index.html" }],
-    "headers": [
-      {
-        "source": "**/*.@(js|css|jpg|jpeg|gif|png|svg|webp|woff2)",
-        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
-      }
-    ]
-  }
-}
-```
-
-## Step 5: Create `.firebaserc`
-
-Create this file with your Firebase project ID:
-
-```json
-{
-  "projects": {
-    "default": "your-firebase-project-id"
-  }
-}
-```
-
-Replace `your-firebase-project-id` with your actual Firebase project ID.
-
-## Step 6: Build and Deploy
-
-```bash
-# Build the production bundle
-npm run build
-
-# Deploy to Firebase Hosting
-firebase deploy --only hosting
-```
-
-Your app will be available at: `https://your-project-id.web.app`
+1. Log in to [Cloudflare Dashboard](https://dash.cloudflare.com)
+2. Go to **Workers & Pages** → **Create application** → **Pages**
+3. Click **Connect to Git**
+4. Authorize Cloudflare to access your GitHub account
+5. Select the **ancure-health** repository
+6. Click **Begin setup**
 
 ---
 
-## Environment Variables
+## Step 2: Configure Build Settings
 
-### For Local Development
+Use these exact settings:
 
-The `.env` file is already configured with Supabase credentials:
-
-```env
-VITE_SUPABASE_PROJECT_ID="your-project-id"
-VITE_SUPABASE_PUBLISHABLE_KEY="your-anon-key"
-VITE_SUPABASE_URL="https://your-project.supabase.co"
-```
-
-### For Production Build
-
-These variables are embedded at build time. Ensure they're set before running `npm run build`.
-
-**Option A: Use `.env` file** (already configured - recommended)
-
-**Option B: Set in CI/CD environment**
-```bash
-export VITE_SUPABASE_URL="https://your-project.supabase.co"
-export VITE_SUPABASE_PUBLISHABLE_KEY="your-anon-key"
-npm run build
-```
+| Setting | Value |
+|---------|-------|
+| **Project name** | `ancure-health` (or your preferred name) |
+| **Production branch** | `main` |
+| **Framework preset** | `Vite` |
+| **Build command** | `npm run build` |
+| **Build output directory** | `dist` |
+| **Root directory** | `/` (leave empty) |
 
 ---
 
-## Configure Supabase Authentication
+## Step 3: Set Environment Variables
 
-### Update Redirect URLs
+**CRITICAL:** You must set these environment variables before the first build.
 
-In Lovable Cloud backend settings, add your Firebase domains:
+In Cloudflare Pages:
+1. Go to **Settings** → **Environment variables**
+2. Add these variables for **Production** (and optionally **Preview**):
 
-1. Open your backend settings
-2. Navigate to Authentication → URL Configuration
-3. Add these URLs:
-   - `https://your-project-id.web.app`
-   - `https://your-project-id.firebaseapp.com`
-   - `https://your-custom-domain.com` (if using)
+| Variable Name | Description | Where to Find |
+|---------------|-------------|---------------|
+| `VITE_SUPABASE_URL` | Your Supabase project URL | Supabase Dashboard → Settings → API |
+| `VITE_SUPABASE_ANON_KEY` | Your Supabase anonymous/public key | Supabase Dashboard → Settings → API |
 
-### Google OAuth Setup
+**Example values:**
+```
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
 
-If using Google Sign-In:
+> ⚠️ **Important:** Use the `anon` key, NOT the `service_role` key. The anon key is safe for frontend use.
+
+---
+
+## Step 4: Configure Supabase Authentication
+
+For authentication to work, you must configure redirect URLs in Supabase:
+
+### 4.1 Set Site URL
+
+1. Go to Supabase Dashboard → **Authentication** → **URL Configuration**
+2. Set **Site URL** to your Cloudflare Pages URL:
+   ```
+   https://your-project.pages.dev
+   ```
+
+### 4.2 Add Redirect URLs
+
+Add these URLs to **Redirect URLs**:
+```
+https://your-project.pages.dev
+https://your-project.pages.dev/auth
+https://your-project.pages.dev/*
+```
+
+If you have a custom domain, add those URLs too:
+```
+https://yourdomain.com
+https://yourdomain.com/auth
+https://yourdomain.com/*
+```
+
+### 4.3 Configure Google OAuth (if using)
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Navigate to APIs & Services → Credentials
+2. Navigate to **APIs & Services** → **Credentials**
 3. Edit your OAuth 2.0 Client ID
-4. Add authorized redirect URIs:
-   - `https://your-supabase-project.supabase.co/auth/v1/callback`
-5. Add authorized JavaScript origins:
-   - `https://your-project-id.web.app`
-   - `https://your-project-id.firebaseapp.com`
+4. Add to **Authorized JavaScript origins**:
+   ```
+   https://your-project.pages.dev
+   ```
+5. Add to **Authorized redirect URIs**:
+   ```
+   https://your-project-id.supabase.co/auth/v1/callback
+   ```
 
 ---
 
-## Custom Domain (Optional)
+## Step 5: Deploy
 
-### In Firebase Console:
-
-1. Go to Hosting → Add custom domain
-2. Enter your domain (e.g., `app.ancure.in`)
-3. Follow DNS verification steps
-4. Add provided DNS records to your domain registrar
-
-### Update Supabase:
-
-Remember to add your custom domain to Supabase redirect URLs.
+1. Click **Save and Deploy** in Cloudflare Pages
+2. Wait for the build to complete (usually 1-2 minutes)
+3. Your app will be live at `https://your-project.pages.dev`
 
 ---
 
-## Continuous Deployment with GitHub Actions
+## Step 6: Custom Domain (Optional)
 
-Create `.github/workflows/firebase-deploy.yml`:
-
-```yaml
-name: Deploy to Firebase Hosting
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-        run: npm run build
-      
-      - name: Deploy to Firebase
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          channelId: live
-          projectId: your-firebase-project-id
-```
-
-### Setup GitHub Secrets:
-
-1. Go to your GitHub repo → Settings → Secrets
-2. Add these secrets:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_PUBLISHABLE_KEY`
-   - `FIREBASE_SERVICE_ACCOUNT` (JSON key from Firebase)
+1. In Cloudflare Pages, go to **Custom domains**
+2. Click **Set up a custom domain**
+3. Enter your domain (e.g., `app.yourdomain.com`)
+4. Follow the DNS configuration steps
+5. **Don't forget** to add the custom domain to Supabase redirect URLs!
 
 ---
 
 ## Troubleshooting
 
-### Build Errors
+### "requested path is invalid" error on login
 
-**"Missing environment variables"**
-- Ensure `.env` file exists with Supabase credentials
-- Or set environment variables before build
+This means your redirect URLs aren't configured correctly in Supabase:
+- Check that your Cloudflare Pages URL is in Supabase → Authentication → URL Configuration
+- Make sure Site URL matches your deployed URL exactly
 
-### 404 Errors on Routes
+### Blank page after deployment
 
-- Ensure `firebase.json` has the SPA rewrite rule
-- All routes should redirect to `/index.html`
+- Check that environment variables are set in Cloudflare Pages
+- Open browser DevTools console for error messages
+- Verify the build completed successfully in Cloudflare Pages deploy logs
 
-### Authentication Not Working
+### Google login not working
 
-1. Check redirect URLs in Supabase auth settings
-2. Verify Google OAuth origins include Firebase domains
-3. Check browser console for CORS errors
+- Verify Google OAuth is enabled in Supabase → Authentication → Providers
+- Check that Cloudflare Pages URL is in Google Cloud Console authorized origins
+- Ensure the Supabase callback URL is in Google's authorized redirect URIs
 
-### Slow Initial Load
+### Routes returning 404
 
-- Caching headers are configured in `firebase.json`
-- Consider using Firebase's CDN features
+The `_redirects` file in `public/` should handle SPA routing. If you still get 404s:
+- Verify `public/_redirects` contains: `/*    /index.html   200`
+- Check that `dist/_redirects` exists after build
 
 ---
 
-## Quick Deploy Commands
+## Environment Variables Reference
 
-```bash
-# One-time setup
-npm install -g firebase-tools
-firebase login
-firebase init hosting  # Select existing project, use 'dist' as public dir
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_SUPABASE_URL` | ✅ Yes | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | ✅ Yes | Supabase anonymous API key |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | ❌ No | Alternative name for anon key |
 
-# Every deployment
-npm run build
-firebase deploy --only hosting
+---
+
+## Automatic Deployments
+
+Once connected, Cloudflare Pages will automatically:
+- Deploy when you push to the `main` branch
+- Create preview deployments for pull requests
+- Provide unique URLs for each deployment
+
+---
+
+## Post-Deployment Steps
+
+### 1. Verify Deployment
+
+After your first successful deployment:
+
+1. Visit your production URL (e.g., `https://ancure-health.pages.dev`)
+2. Test the following:
+   - [ ] Landing page loads correctly
+   - [ ] Navigate to /track works
+   - [ ] Navigate to /auth works
+   - [ ] Direct URL access works (no 404s)
+   - [ ] Magic link authentication works
+   - [ ] Data saves and persists
+
+### 2. Add Custom Domain
+
+1. In Cloudflare Pages, go to **Custom domains**
+2. Click **Set up a custom domain**
+3. Enter your domain (e.g., `app.ancure.health`)
+4. Follow DNS configuration:
+   - For apex domain: Add CNAME record pointing to `ancure-health.pages.dev`
+   - For subdomain: Add CNAME record pointing to `ancure-health.pages.dev`
+5. Wait for SSL certificate provisioning (usually automatic)
+
+**Important:** After adding a custom domain, update Supabase:
+- Add the new domain to Site URL
+- Add the new domain to Redirect URLs
+
+### 3. Enable Cloudflare Analytics
+
+1. Go to your Cloudflare Pages project
+2. Click **Analytics** tab
+3. View metrics:
+   - **Web Analytics**: Page views, visitors, countries
+   - **Real User Metrics**: Core Web Vitals (LCP, FID, CLS)
+   - **Requests**: Total requests, bandwidth, cache hit ratio
+
+For more detailed analytics:
+1. Go to Cloudflare Dashboard → **Analytics & Logs**
+2. Select **Web Analytics**
+3. Enable for your domain
+
+### 4. Monitor Supabase Logs
+
+To check for errors in your backend:
+
+1. Go to Supabase Dashboard → **Logs**
+2. Select log type:
+   - **Postgres logs**: Database queries and errors
+   - **Auth logs**: Authentication events and errors
+   - **API logs**: REST API requests
+
+**Common things to monitor:**
+- Failed authentication attempts
+- RLS policy violations
+- Slow queries
+- Error rates
+
+To access via Lovable Cloud:
+```xml
+<presentation-actions>
+  <presentation-open-backend>View Backend</presentation-open-backend>
+</presentation-actions>
 ```
 
+### 5. Set Up Alerts (Optional)
+
+In Cloudflare:
+1. Go to **Notifications**
+2. Create alerts for:
+   - Deployment failures
+   - Origin error rate spikes
+   - Traffic anomalies
+
+In Supabase:
+1. Go to **Settings** → **Logs & Analytics**
+2. Enable **Database Health Reports**
+
+### 6. Performance Optimization
+
+**Cloudflare Caching:**
+- Static assets are cached automatically
+- Configure cache rules in **Rules** → **Cache Rules**
+
+**Recommended settings:**
+- Enable **Auto Minify** (HTML, CSS, JS)
+- Enable **Brotli compression**
+- Set appropriate cache TTLs for static assets
+
 ---
 
-## Quick Deploy Checklist
+## Production Checklist
 
-- [ ] Firebase CLI installed and logged in
-- [ ] `firebase.json` configured (already done)
-- [ ] `.firebaserc` with your project ID
-- [ ] `.env` has Supabase credentials
-- [ ] `npm run build` succeeds
-- [ ] Supabase redirect URLs updated
-- [ ] Google OAuth origins updated (if using)
-- [ ] `firebase deploy --only hosting` succeeds
-- [ ] Test authentication on deployed site
-- [ ] Test all features (blogs, tracking, etc.)
+Before announcing your app:
+
+- [ ] All authentication methods tested
+- [ ] Data saves correctly for logged-in users
+- [ ] Email templates customized in Supabase
+- [ ] Custom domain configured with SSL
+- [ ] Analytics enabled and working
+- [ ] Error monitoring in place
+- [ ] Backup strategy for database (Supabase handles this)
+- [ ] Rate limiting configured if needed
 
 ---
 
-## Support Resources
+## Rollback Procedure
 
-- [Firebase Hosting Docs](https://firebase.google.com/docs/hosting)
-- [Vite + Firebase Guide](https://vitejs.dev/guide/static-deploy.html#google-firebase)
-- [Supabase Auth Docs](https://supabase.com/docs/guides/auth)
+If something goes wrong:
+
+1. **Cloudflare Pages**: 
+   - Go to **Deployments**
+   - Find the last working deployment
+   - Click **...** → **Rollback to this deployment**
+
+2. **Supabase (database)**:
+   - Daily backups are automatic
+   - Contact Supabase support for point-in-time recovery
+
+---
+
+## Support
+
+- [Cloudflare Pages Docs](https://developers.cloudflare.com/pages/)
+- [Cloudflare Community](https://community.cloudflare.com/)
+- [Supabase Docs](https://supabase.com/docs)
+- [Supabase Discord](https://discord.supabase.com/)
+- [Vite Deployment Guide](https://vitejs.dev/guide/static-deploy.html#cloudflare-pages)

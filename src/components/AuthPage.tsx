@@ -24,6 +24,13 @@ export function AuthPage() {
     initializeAuth();
   }, [initializeAuth]);
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/track');
+    }
+  }, [user, navigate]);
+
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -69,9 +76,8 @@ export function AuthPage() {
         description: error.message || "Failed to sign in with Google. Please try again.",
         variant: "destructive"
       });
-    } else {
-      navigate('/');
     }
+    // Don't set loading to false on success - redirect will happen
   };
   return <div className="min-h-screen gradient-hero">
       {/* Decorative background */}

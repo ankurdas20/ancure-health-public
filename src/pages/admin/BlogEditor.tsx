@@ -4,7 +4,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  Blog,
   useAdminBlog,
   useCreateBlog,
   useUpdateBlog,
@@ -78,17 +77,8 @@ export default function BlogEditor() {
   const { data: existingBlog, isLoading: isLoadingBlog } = useAdminBlog(id || '');
   const { data: categories } = useCategories();
   const { data: tags } = useTags();
-
-  const handleSuccess = (savedBlog: Blog) => {
-    if (savedBlog.is_published) {
-      navigate(`/blogs/${savedBlog.slug}`);
-    } else {
-      navigate('/admin/blogs');
-    }
-  };
-
-  const createBlog = useCreateBlog({ onSuccess: handleSuccess });
-  const updateBlog = useUpdateBlog({ onSuccess: handleSuccess });
+  const createBlog = useCreateBlog();
+  const updateBlog = useUpdateBlog();
 
   const form = useForm<BlogFormData>({
     resolver: zodResolver(blogSchema),
@@ -107,6 +97,7 @@ export default function BlogEditor() {
     },
   });
 
+  // Populate form with existing blog data
   useEffect(() => {
     if (existingBlog) {
       form.reset({
@@ -125,10 +116,12 @@ export default function BlogEditor() {
     }
   }, [existingBlog, form]);
 
+  // Auto-generate slug from title
   const watchTitle = form.watch('title');
   useEffect(() => {
     if (!isEditing && watchTitle) {
-      form.setValue('slug', generateSlug(watchTitle));
+      const slug = generateSlug(watchTitle);
+      form.setValue('slug', slug);
     }
   }, [watchTitle, isEditing, form]);
 
@@ -160,14 +153,29 @@ export default function BlogEditor() {
       toast({ title: 'You must be logged in', variant: 'destructive' });
       return;
     }
-    
-    const payload: any = isEditing ? { id, data } : { ...data, author_id: user.id };
-    const mutation = isEditing ? updateBlog : createBlog;
-    
+
     try {
-      await mutation.mutateAsync(payload);
-    } catch(e) {
-      // Error is handled by the mutation's onError
+      if (isEditing && id) {
+        await updateBlog.mutateAsync({ id, data });
+      } else {
+        await createBlog.mutateAsync({
+          title: data.title,
+          slug: data.slug,
+          content: data.content,
+          excerpt: data.excerpt || '',
+          featured_image: data.featured_image || null,
+          category_id: data.category_id || null,
+          is_published: data.is_published,
+          is_featured: data.is_featured,
+          meta_title: data.meta_title || '',
+          meta_description: data.meta_description || '',
+          tag_ids: data.tag_ids,
+          author_id: user.id,
+        });
+      }
+      navigate('/admin/blogs');
+    } catch (error) {
+      // Error is handled by the mutation
     }
   };
 

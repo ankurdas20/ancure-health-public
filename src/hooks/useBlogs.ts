@@ -208,6 +208,7 @@ export function useAdminBlog(id: string) {
 
       if (error) throw error;
 
+      // Fetch tags for this blog
       const { data: tagRelations } = await supabase
         .from('blog_tag_relations')
         .select('tag_id')
@@ -278,18 +279,8 @@ export function useRelatedBlogs(currentBlogId: string, categoryId: string | null
   });
 }
 
-const getFullBlog = async (id: string): Promise<Blog> => {
-    const { data, error } = await supabase
-        .from('blogs')
-        .select(`*, category:blog_categories(*)`)
-        .eq('id', id)
-        .single();
-    if (error) throw error;
-    return data as Blog;
-}
-
 // Create blog mutation
-export function useCreateBlog(options?: { onSuccess?: (data: Blog) => void }) {
+export function useCreateBlog() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -297,6 +288,7 @@ export function useCreateBlog(options?: { onSuccess?: (data: Blog) => void }) {
     mutationFn: async (data: BlogFormData & { author_id: string }) => {
       const { tag_ids, ...blogData } = data;
       
+      // Calculate read time (average 200 words per minute)
       const wordCount = blogData.content.replace(/<[^>]*>/g, '').split(/\s+/).length;
       const read_time_minutes = Math.max(1, Math.ceil(wordCount / 200));
 
@@ -307,22 +299,26 @@ export function useCreateBlog(options?: { onSuccess?: (data: Blog) => void }) {
           read_time_minutes,
           published_at: blogData.is_published ? new Date().toISOString() : null,
         })
-        .select('id')
+        .select()
         .single();
 
       if (error) throw error;
 
+      // Add tag relations
       if (tag_ids.length > 0) {
-        const tagRelations = tag_ids.map(tag_id => ({ blog_id: blog.id, tag_id }));
+        const tagRelations = tag_ids.map(tag_id => ({
+          blog_id: blog.id,
+          tag_id,
+        }));
+
         await supabase.from('blog_tag_relations').insert(tagRelations);
       }
-      
-      return await getFullBlog(blog.id);
+
+      return blog;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['blogs'] });
       toast({ title: 'Blog created successfully!' });
-      options?.onSuccess?.(data);
     },
     onError: (error: Error) => {
       toast({ title: 'Error creating blog', description: error.message, variant: 'destructive' });
@@ -331,7 +327,7 @@ export function useCreateBlog(options?: { onSuccess?: (data: Blog) => void }) {
 }
 
 // Update blog mutation
-export function useUpdateBlog(options?: { onSuccess?: (data: Blog) => void }) {
+export function useUpdateBlog() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -339,45 +335,46 @@ export function useUpdateBlog(options?: { onSuccess?: (data: Blog) => void }) {
     mutationFn: async ({ id, data }: { id: string; data: Partial<BlogFormData> }) => {
       const { tag_ids, ...blogData } = data;
 
+      // Calculate read time if content changed
       if (blogData.content) {
         const wordCount = blogData.content.replace(/<[^>]*>/g, '').split(/\s+/).length;
         (blogData as any).read_time_minutes = Math.max(1, Math.ceil(wordCount / 200));
       }
 
-      if (data.is_published === true) {
-        const { data: currentBlog } = await supabase.from('blogs').select('is_published').eq('id', id).single();
-        if (currentBlog && !currentBlog.is_published) {
-          (blogData as any).published_at = new Date().toISOString();
-        }
-      } else if (data.is_published === false) {
-        (blogData as any).published_at = null;
+      // Set published_at if publishing
+      if (blogData.is_published) {
+        (blogData as any).published_at = new Date().toISOString();
       }
 
       const { data: blog, error } = await supabase
         .from('blogs')
         .update(blogData)
         .eq('id', id)
-        .select('id')
+        .select()
         .single();
 
       if (error) throw error;
 
+      // Update tag relations
       if (tag_ids !== undefined) {
+        // Remove existing relations
         await supabase.from('blog_tag_relations').delete().eq('blog_id', id);
+
+        // Add new relations
         if (tag_ids.length > 0) {
-          const tagRelations = tag_ids.map(tag_id => ({ blog_id: id, tag_id }));
+          const tagRelations = tag_ids.map(tag_id => ({
+            blog_id: id,
+            tag_id,
+          }));
           await supabase.from('blog_tag_relations').insert(tagRelations);
         }
       }
-      
-      return await getFullBlog(blog.id);
+
+      return blog;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['blogs'] });
-      queryClient.invalidateQueries({ queryKey: ['blog', data.slug] });
-      queryClient.invalidateQueries({ queryKey: ['blog', 'admin', data.id] });
       toast({ title: 'Blog updated successfully!' });
-      options?.onSuccess?.(data);
     },
     onError: (error: Error) => {
       toast({ title: 'Error updating blog', description: error.message, variant: 'destructive' });
@@ -392,7 +389,9 @@ export function useDeleteBlog() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Delete tag relations first
       await supabase.from('blog_tag_relations').delete().eq('blog_id', id);
+
       const { error } = await supabase.from('blogs').delete().eq('id', id);
       if (error) throw error;
     },

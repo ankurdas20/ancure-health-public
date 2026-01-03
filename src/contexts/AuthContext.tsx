@@ -18,7 +18,6 @@ interface AuthContextType {
   loading: boolean;
   initialized: boolean;
   isAuthenticated: boolean;
-  isAdmin: boolean;
   initializeAuth: () => Promise<void>;
   signInWithMagicLink: (email: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
@@ -199,10 +198,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   }, [getSupabase]);
 
-  // Admin check - for now, no role column exists, so admin is always false
-  // Add a 'role' column to profiles table if admin functionality is needed
-  const isAdmin = useMemo(() => false, []);
-
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
     user, 
@@ -211,14 +206,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading, 
     initialized,
     isAuthenticated: !!user,
-    isAdmin,
     initializeAuth,
     signInWithMagicLink,
     signInWithGoogle,
     signOut,
     refreshProfile,
     cleanup,
-  }), [user, session, profile, loading, initialized, isAdmin, initializeAuth, signInWithMagicLink, signInWithGoogle, signOut, refreshProfile, cleanup]);
+  }), [user, session, profile, loading, initialized, initializeAuth, signInWithMagicLink, signInWithGoogle, signOut, refreshProfile, cleanup]);
 
   return (
     <AuthContext.Provider value={value}>

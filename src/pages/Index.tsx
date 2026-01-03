@@ -19,6 +19,8 @@ const Index = () => {
     if (initialized && !loading && user && profile) {
       if (!profile.phone_number) {
         setShowPhoneModal(true);
+      } else {
+        navigate('/track', { replace: true });
       }
     }
   }, [user, profile, initialized, loading, navigate]);

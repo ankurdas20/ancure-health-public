@@ -1,206 +1,374 @@
+CREATE EXTENSION IF NOT EXISTS "pg_graphql";
+CREATE EXTENSION IF NOT EXISTS "pg_stat_statements" WITH SCHEMA "extensions";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
+CREATE EXTENSION IF NOT EXISTS "plpgsql";
+CREATE EXTENSION IF NOT EXISTS "supabase_vault";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
+BEGIN;
 
-set check_function_bodies = off;
+--
+-- PostgreSQL database dump
+--
 
-CREATE OR REPLACE FUNCTION public.get_user_role() RETURNS text
-    LANGUAGE sql SECURITY DEFINER
+
+-- Dumped from database version 17.6
+-- Dumped by pg_dump version 18.1
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: public; Type: SCHEMA; Schema: -; Owner: -
+--
+
+
+
+--
+-- Name: handle_new_user(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.handle_new_user() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
     AS $$
-  SELECT COALESCE(
-    (SELECT role FROM public.profiles WHERE user_id = auth.uid()),
-    'user'
-  );
+BEGIN
+  INSERT INTO public.profiles (user_id, email)
+  VALUES (NEW.id, NEW.email);
+  RETURN NEW;
+END;
 $$;
 
-GRANT ALL ON FUNCTION public.get_user_role() TO anon;
-GRANT ALL ON FUNCTION public.get_user_role() TO authenticated;
-GRANT ALL ON FUNCTION public.get_user_role() TO service_role;
+
+--
+-- Name: update_updated_at_column(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_updated_at_column() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'public'
+    AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
 
 
-CREATE TABLE public.blog_categories (
+SET default_table_access_method = heap;
+
+--
+-- Name: cycle_data; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.cycle_data (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    name character varying NOT NULL,
-    slug character varying NOT NULL,
-    description text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    user_id uuid NOT NULL,
+    age integer NOT NULL,
+    cycle_length integer NOT NULL,
+    last_period_date date NOT NULL,
+    period_duration integer NOT NULL,
+    is_regular boolean DEFAULT true NOT NULL,
+    symptoms text[] DEFAULT '{}'::text[],
+    stress_level text,
+    activity_level text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    goal text DEFAULT 'track_period'::text,
+    CONSTRAINT cycle_data_activity_level_check CHECK ((activity_level = ANY (ARRAY['low'::text, 'moderate'::text, 'high'::text]))),
+    CONSTRAINT cycle_data_stress_level_check CHECK ((stress_level = ANY (ARRAY['low'::text, 'moderate'::text, 'high'::text])))
 );
 
-ALTER TABLE public.blog_categories OWNER TO postgres;
 
-CREATE TABLE public.blog_tag_relations (
-    blog_id uuid NOT NULL,
-    tag_id uuid NOT NULL
-);
+--
+-- Name: period_logs; Type: TABLE; Schema: public; Owner: -
+--
 
-ALTER TABLE public.blog_tag_relations OWNER TO postgres;
-
-CREATE TABLE public.blog_tags (
+CREATE TABLE public.period_logs (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    name character varying NOT NULL,
-    slug character varying NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-ALTER TABLE public.blog_tags OWNER TO postgres;
-
-CREATE TABLE public.blogs (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    title character varying NOT NULL,
-    slug character varying NOT NULL,
-    content text NOT NULL,
-    excerpt text,
-    featured_image text,
-    category_id uuid,
-    author_id uuid NOT NULL,
-    is_published boolean DEFAULT false NOT NULL,
-    is_featured boolean DEFAULT false NOT NULL,
-    read_time_minutes integer,
-    meta_title character varying,
-    meta_description character varying,
-    published_at timestamp with time zone,
+    user_id uuid NOT NULL,
+    start_date date NOT NULL,
+    end_date date,
+    predicted_start_date date,
+    cycle_length integer,
+    notes text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
-ALTER TABLE public.blogs OWNER TO postgres;
 
-CREATE OR REPLACE FUNCTION public.handle_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    NEW.updated_at = now();
-    RETURN NEW;
-END;
-$$;
-
-ALTER FUNCTION public.handle_updated_at() OWNER TO postgres;
+--
+-- Name: profiles; Type: TABLE; Schema: public; Owner: -
+--
 
 CREATE TABLE public.profiles (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
-    email character varying,
-    full_name character varying,
-    avatar_url text,
+    email text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    phone_number character varying,
-    role text DEFAULT 'user'::text,
-    CONSTRAINT profiles_role_check CHECK ((role = ANY (ARRAY['user'::text, 'admin'::text])))
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
-ALTER TABLE public.profiles OWNER TO postgres;
 
-ALTER TABLE ONLY public.blog_categories
-    ADD CONSTRAINT blog_categories_pkey PRIMARY KEY (id);
+--
+-- Name: symptom_logs; Type: TABLE; Schema: public; Owner: -
+--
 
-ALTER TABLE ONLY public.blog_categories
-    ADD CONSTRAINT blog_categories_slug_key UNIQUE (slug);
+CREATE TABLE public.symptom_logs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    log_date date NOT NULL,
+    symptoms text[] DEFAULT '{}'::text[] NOT NULL,
+    mood text,
+    energy_level text,
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
 
-ALTER TABLE ONLY public.blog_tag_relations
-    ADD CONSTRAINT blog_tag_relations_pkey PRIMARY KEY (blog_id, tag_id);
 
-ALTER TABLE ONLY public.blog_tags
-    ADD CONSTRAINT blog_tags_pkey PRIMARY KEY (id);
+--
+-- Name: cycle_data cycle_data_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
 
-ALTER TABLE ONLY public.blog_tags
-    ADD CONSTRAINT blog_tags_slug_key UNIQUE (slug);
+ALTER TABLE ONLY public.cycle_data
+    ADD CONSTRAINT cycle_data_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY public.blogs
-    ADD CONSTRAINT blogs_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY public.blogs
-    ADD CONSTRAINT blogs_slug_key UNIQUE (slug);
+--
+-- Name: cycle_data cycle_data_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
 
-ALTER TABLE ONLY public.profiles
-    ADD CONSTRAINT profiles_email_key UNIQUE (email);
+ALTER TABLE ONLY public.cycle_data
+    ADD CONSTRAINT cycle_data_user_id_key UNIQUE (user_id);
+
+
+--
+-- Name: period_logs period_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.period_logs
+    ADD CONSTRAINT period_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: profiles profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
 
 ALTER TABLE ONLY public.profiles
     ADD CONSTRAINT profiles_pkey PRIMARY KEY (id);
 
+
+--
+-- Name: profiles profiles_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY public.profiles
     ADD CONSTRAINT profiles_user_id_key UNIQUE (user_id);
 
-CREATE TRIGGER on_blog_update BEFORE UPDATE ON public.blogs FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
-ALTER TABLE ONLY public.blog_tag_relations
-    ADD CONSTRAINT blog_tag_relations_blog_id_fkey FOREIGN KEY (blog_id) REFERENCES public.blogs(id) ON DELETE CASCADE;
+--
+-- Name: symptom_logs symptom_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
 
-ALTER TABLE ONLY public.blog_tag_relations
-    ADD CONSTRAINT blog_tag_relations_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.blog_tags(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.symptom_logs
+    ADD CONSTRAINT symptom_logs_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY public.blogs
-    ADD CONSTRAINT blogs_author_id_fkey FOREIGN KEY (author_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
-ALTER TABLE ONLY public.blogs
-    ADD CONSTRAINT blogs_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.blog_categories(id) ON DELETE SET NULL;
+--
+-- Name: symptom_logs symptom_logs_user_id_log_date_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.symptom_logs
+    ADD CONSTRAINT symptom_logs_user_id_log_date_key UNIQUE (user_id, log_date);
+
+
+--
+-- Name: cycle_data update_cycle_data_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_cycle_data_updated_at BEFORE UPDATE ON public.cycle_data FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: period_logs update_period_logs_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_period_logs_updated_at BEFORE UPDATE ON public.period_logs FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: profiles update_profiles_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: symptom_logs update_symptom_logs_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_symptom_logs_updated_at BEFORE UPDATE ON public.symptom_logs FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: cycle_data cycle_data_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cycle_data
+    ADD CONSTRAINT cycle_data_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: profiles profiles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
 
 ALTER TABLE ONLY public.profiles
     ADD CONSTRAINT profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
-CREATE POLICY "Allow admin full access to blogs" ON public.blogs FOR ALL USING ((get_user_role() = 'admin'::text)) WITH CHECK ((get_user_role() = 'admin'::text));
 
-CREATE POLICY "Allow admin write access to blog categories" ON public.blog_categories FOR ALL USING ((get_user_role() = 'admin'::text)) WITH CHECK ((get_user_role() = 'admin'::text));
+--
+-- Name: cycle_data Users can delete their own cycle data; Type: POLICY; Schema: public; Owner: -
+--
 
-CREATE POLICY "Allow admin write access to blog tag relations" ON public.blog_tag_relations FOR ALL USING ((get_user_role() = 'admin'::text)) WITH CHECK ((get_user_role() = 'admin'::text));
+CREATE POLICY "Users can delete their own cycle data" ON public.cycle_data FOR DELETE USING ((auth.uid() = user_id));
 
-CREATE POLICY "Allow admin write access to blog tags" ON public.blog_tags FOR ALL USING ((get_user_role() = 'admin'::text)) WITH CHECK ((get_user_role() = 'admin'::text));
 
-CREATE POLICY "Allow authenticated users to delete their own blog images" ON storage.objects FOR DELETE USING (((bucket_id = 'blog-images'::text) AND (auth.uid() = owner)));
+--
+-- Name: period_logs Users can delete their own period logs; Type: POLICY; Schema: public; Owner: -
+--
 
-CREATE POLICY "Allow authenticated users to upload blog images" ON storage.objects FOR INSERT WITH CHECK (((bucket_id = 'blog-images'::text) AND (auth.role() = 'authenticated'::text)));
+CREATE POLICY "Users can delete their own period logs" ON public.period_logs FOR DELETE USING ((auth.uid() = user_id));
 
-CREATE POLICY "Allow authenticated users to update their own blog images" ON storage.objects FOR UPDATE USING (((bucket_id = 'blog-images'::text) AND (auth.uid() = owner)));
 
-CREATE POLICY "Allow individuals to update their own profile." ON public.profiles FOR UPDATE USING ((auth.uid() = user_id));
+--
+-- Name: symptom_logs Users can delete their own symptom logs; Type: POLICY; Schema: public; Owner: -
+--
 
-CREATE POLICY "Allow public read access to blog categories" ON public.blog_categories FOR SELECT USING (true);
+CREATE POLICY "Users can delete their own symptom logs" ON public.symptom_logs FOR DELETE USING ((auth.uid() = user_id));
 
-CREATE POLICY "Allow public read access to blog images" ON storage.objects FOR SELECT USING ((bucket_id = 'blog-images'::text));
 
-CREATE POLICY "Allow public read access to blog tag relations" ON public.blog_tag_relations FOR SELECT USING (true);
+--
+-- Name: cycle_data Users can insert their own cycle data; Type: POLICY; Schema: public; Owner: -
+--
 
-CREATE POLICY "Allow public read access to blog tags" ON public.blog_tags FOR SELECT USING (true);
+CREATE POLICY "Users can insert their own cycle data" ON public.cycle_data FOR INSERT WITH CHECK ((auth.uid() = user_id));
 
-CREATE POLICY "Allow public read access to published blogs" ON public.blogs FOR SELECT USING ((is_published = true));
 
-CREATE POLICY "Allow users to read their own profile" ON public.profiles FOR SELECT USING ((auth.uid() = user_id));
+--
+-- Name: period_logs Users can insert their own period logs; Type: POLICY; Schema: public; Owner: -
+--
 
-ALTER TABLE public.blog_categories ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can insert their own period logs" ON public.period_logs FOR INSERT WITH CHECK ((auth.uid() = user_id));
 
-ALTER TABLE public.blog_tag_relations ENABLE ROW LEVEL SECURITY;
 
-ALTER TABLE public.blog_tags ENABLE ROW LEVEL SECURITY;
+--
+-- Name: profiles Users can insert their own profile; Type: POLICY; Schema: public; Owner: -
+--
 
-ALTER TABLE public.blogs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK ((auth.uid() = user_id));
+
+
+--
+-- Name: symptom_logs Users can insert their own symptom logs; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can insert their own symptom logs" ON public.symptom_logs FOR INSERT WITH CHECK ((auth.uid() = user_id));
+
+
+--
+-- Name: cycle_data Users can update their own cycle data; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can update their own cycle data" ON public.cycle_data FOR UPDATE USING ((auth.uid() = user_id));
+
+
+--
+-- Name: period_logs Users can update their own period logs; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can update their own period logs" ON public.period_logs FOR UPDATE USING ((auth.uid() = user_id));
+
+
+--
+-- Name: profiles Users can update their own profile; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING ((auth.uid() = user_id));
+
+
+--
+-- Name: symptom_logs Users can update their own symptom logs; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can update their own symptom logs" ON public.symptom_logs FOR UPDATE USING ((auth.uid() = user_id));
+
+
+--
+-- Name: cycle_data Users can view their own cycle data; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can view their own cycle data" ON public.cycle_data FOR SELECT USING ((auth.uid() = user_id));
+
+
+--
+-- Name: period_logs Users can view their own period logs; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can view their own period logs" ON public.period_logs FOR SELECT USING ((auth.uid() = user_id));
+
+
+--
+-- Name: profiles Users can view their own profile; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING ((auth.uid() = user_id));
+
+
+--
+-- Name: symptom_logs Users can view their own symptom logs; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can view their own symptom logs" ON public.symptom_logs FOR SELECT USING ((auth.uid() = user_id));
+
+
+--
+-- Name: cycle_data; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.cycle_data ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: period_logs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.period_logs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: profiles; Type: ROW SECURITY; Schema: public; Owner: -
+--
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
-GRANT ALL ON TABLE public.blog_categories TO anon;
-GRANT ALL ON TABLE public.blog_categories TO authenticated;
-GRANT ALL ON TABLE public.blog_categories TO service_role;
+--
+-- Name: symptom_logs; Type: ROW SECURITY; Schema: public; Owner: -
+--
 
-GRANT ALL ON TABLE public.blog_tag_relations TO anon;
-GRANT ALL ON TABLE public.blog_tag_relations TO authenticated;
-GRANT ALL ON TABLE public.blog_tag_relations TO service_role;
+ALTER TABLE public.symptom_logs ENABLE ROW LEVEL SECURITY;
 
-GRANT ALL ON TABLE public.blog_tags TO anon;
-GRANT ALL ON TABLE public.blog_tags TO authenticated;
-GRANT ALL ON TABLE public.blog_tags TO service_role;
+--
+-- PostgreSQL database dump complete
+--
 
-GRANT ALL ON TABLE public.blogs TO anon;
-GRANT ALL ON TABLE public.blogs TO authenticated;
-GRANT ALL ON TABLE public.blogs TO service_role;
 
-GRANT ALL ON FUNCTION public.handle_updated_at() TO anon;
-GRANT ALL ON FUNCTION public.handle_updated_at() TO authenticated;
-GRANT ALL ON FUNCTION public.handle_updated_at() TO service_role;
 
-GRANT ALL ON TABLE public.profiles TO anon;
-GRANT ALL ON TABLE public.profiles TO authenticated;
-GRANT ALL ON TABLE public.profiles TO service_role;
 
-ALTER PUBLICATION supabase_realtime ADD TABLE public.blog_categories;
-
-ALTER PUBLICATION supabase_realtime ADD TABLE public.blog_tag_relations;
-
-ALTER PUBLICATION supabase_realtime ADD TABLE public.blog_tags;
-
-ALTER PUBLICATION supabase_realtime ADD TABLE public.blogs;
-
+COMMIT;
