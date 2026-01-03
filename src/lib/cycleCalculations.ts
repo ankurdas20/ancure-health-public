@@ -1,29 +1,61 @@
+/**
+ * Cycle calculation utilities for menstrual health tracking
+ * Provides period predictions, fertile window calculations, and phase detection
+ * @module cycleCalculations
+ */
+
+/** User's tracking goal */
 export type CycleGoal = 'track_period' | 'try_to_conceive' | 'avoid_pregnancy' | 'pcos_management';
 
+/** User's cycle data input */
 export interface CycleData {
+  /** User's age in years */
   age: number;
+  /** Average cycle length in days (typically 21-35) */
   cycleLength: number;
+  /** Last period start date (YYYY-MM-DD format) */
   lastPeriodDate: string;
+  /** Average period duration in days */
   periodDuration: number;
+  /** Whether cycles are regular (vary by ≤7 days) */
   isRegular: boolean;
+  /** User's primary tracking goal */
   goal?: CycleGoal;
+  /** Current symptoms being tracked */
   symptoms?: string[];
+  /** Self-reported stress level */
   stressLevel?: 'low' | 'moderate' | 'high';
+  /** Self-reported physical activity level */
   activityLevel?: 'low' | 'moderate' | 'high';
 }
 
+/** Calculated cycle insights based on user data */
 export interface CycleInsights {
+  /** Predicted next period start date */
   nextPeriodDate: Date;
+  /** Predicted next period end date */
   nextPeriodEndDate: Date;
+  /** Estimated ovulation date */
   ovulationDate: Date;
+  /** Start of estimated fertile window */
   fertileWindowStart: Date;
+  /** End of estimated fertile window */
   fertileWindowEnd: Date;
+  /** Current day in the cycle (1-based) */
   currentCycleDay: number;
+  /** Days until predicted next period */
   daysUntilNextPeriod: number;
+  /** Current phase of the cycle */
   cyclePhase: 'menstrual' | 'follicular' | 'ovulation' | 'luteal';
+  /** Prediction confidence based on cycle regularity */
   confidence: 'high' | 'medium' | 'low';
 }
 
+/**
+ * Calculates cycle insights from user data
+ * @param data - User's cycle configuration
+ * @returns Calculated predictions and current cycle status
+ */
 export function calculateCycleInsights(data: CycleData): CycleInsights {
   const lastPeriod = new Date(data.lastPeriodDate);
   const today = new Date();
@@ -99,6 +131,11 @@ export function calculateCycleInsights(data: CycleData): CycleInsights {
   };
 }
 
+/**
+ * Gets display information for a cycle phase
+ * @param phase - The cycle phase
+ * @returns Phase name, emoji, gradient colors, and supportive message
+ */
 export function getPhaseInfo(phase: CycleInsights['cyclePhase']) {
   const phases = {
     menstrual: {
@@ -129,6 +166,12 @@ export function getPhaseInfo(phase: CycleInsights['cyclePhase']) {
   return phases[phase];
 }
 
+/**
+ * Gets a daily wellness insight based on cycle phase
+ * @param phase - Current cycle phase
+ * @param day - Current day for message rotation
+ * @returns A supportive insight message
+ */
 export function getDailyInsight(phase: CycleInsights['cyclePhase'], day: number): string {
   const insights = {
     menstrual: [
@@ -157,6 +200,11 @@ export function getDailyInsight(phase: CycleInsights['cyclePhase'], day: number)
   return phaseInsights[day % phaseInsights.length];
 }
 
+/**
+ * Generates personalized pattern insights based on user data
+ * @param data - User's cycle data
+ * @returns Array of relevant insight messages
+ */
 export function getPatternInsights(data: CycleData): string[] {
   const insights: string[] = [];
   
@@ -187,6 +235,11 @@ export function getPatternInsights(data: CycleData): string[] {
   return insights;
 }
 
+/**
+ * Checks for potential PCOS educational indicators (not diagnostic)
+ * @param data - User's cycle data
+ * @returns Object with indicator status and educational messages
+ */
 export function getPCOSEducationalIndicators(data: CycleData): { hasIndicators: boolean; messages: string[] } {
   const messages: string[] = [];
   
@@ -208,11 +261,22 @@ export function getPCOSEducationalIndicators(data: CycleData): { hasIndicators: 
   };
 }
 
+/**
+ * Formats a date range for display
+ * @param start - Start date
+ * @param end - End date
+ * @returns Formatted string like "Jan 1 - Jan 5"
+ */
 export function formatDateRange(start: Date, end: Date): string {
   const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
   return `${start.toLocaleDateString('en-US', options)} - ${end.toLocaleDateString('en-US', options)}`;
 }
 
+/**
+ * Formats a single date for display
+ * @param date - The date to format
+ * @returns Formatted string like "January 1, 2024"
+ */
 export function formatDate(date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
