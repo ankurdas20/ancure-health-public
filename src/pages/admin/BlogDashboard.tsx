@@ -48,12 +48,12 @@ export default function BlogDashboard() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'all' | 'published' | 'draft'>('all');
-  const [categoryId, setCategoryId] = useState<string>('');
+  const [categoryId, setCategoryId] = useState<string>('all');
 
   const { data: blogs, isLoading } = useAdminBlogs({
     search,
     status,
-    categoryId: categoryId || undefined,
+    categoryId: categoryId === 'all' ? undefined : categoryId,
   });
   const { data: categories } = useCategories();
   const deleteBlog = useDeleteBlog();
@@ -122,7 +122,7 @@ export default function BlogDashboard() {
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Categories</SelectItem>
+              <SelectItem value="all">All Categories</SelectItem>
               {categories?.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id}>
                   {cat.name}
