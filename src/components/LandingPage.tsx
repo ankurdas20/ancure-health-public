@@ -1,9 +1,9 @@
 import { memo, forwardRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
-import { ArrowRight, Send, Shield, Heart, Sparkles, Calendar } from 'lucide-react';
+import { ArrowRight, Send, Shield, Heart, Sparkles, Calendar, BookOpen } from 'lucide-react';
 
 // Memoized feature card to prevent re-renders
 const FeatureCard = memo(function FeatureCard({ 
@@ -77,12 +77,17 @@ export const LandingPage = memo(forwardRef<HTMLDivElement>(
         <div className="relative z-10 container mx-auto px-4 py-8">
           {/* Header */}
           <motion.header 
-            className="flex justify-center mb-16" 
+            className="flex items-center justify-between mb-16" 
             initial={{ opacity: 0, y: -20 }} 
             animate={{ opacity: 1, y: 0 }} 
             transition={{ duration: 0.6 }}
           >
+            <div className="w-24" /> {/* Spacer for centering */}
             <Logo size="large" />
+            <Link to="/blogs" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+              <BookOpen className="w-4 h-4" />
+              Blog
+            </Link>
           </motion.header>
 
           {/* Hero Section */}
