@@ -1,3 +1,4 @@
+
 -- Create blog categories table
 CREATE TABLE IF NOT EXISTS public.blog_categories (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -9,11 +10,6 @@ CREATE TABLE IF NOT EXISTS public.blog_categories (
     CONSTRAINT blog_categories_slug_key UNIQUE (slug)
 );
 ALTER TABLE public.blog_categories ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow public read access to blog categories" ON public.blog_categories;
-CREATE POLICY "Allow public read access to blog categories" ON public.blog_categories FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Allow admin write access to blog categories" ON public.blog_categories;
-CREATE POLICY "Allow admin write access to blog categories" ON public.blog_categories FOR ALL USING (auth.role() = 'service_role'::text);
-
 
 -- Create blog tags table
 CREATE TABLE IF NOT EXISTS public.blog_tags (
@@ -25,11 +21,6 @@ CREATE TABLE IF NOT EXISTS public.blog_tags (
     CONSTRAINT blog_tags_slug_key UNIQUE (slug)
 );
 ALTER TABLE public.blog_tags ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow public read access to blog tags" ON public.blog_tags;
-CREATE POLICY "Allow public read access to blog tags" ON public.blog_tags FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Allow admin write access to blog tags" ON public.blog_tags;
-CREATE POLICY "Allow admin write access to blog tags" ON public.blog_tags FOR ALL USING (auth.role() = 'service_role'::text);
-
 
 -- Create blogs table
 CREATE TABLE IF NOT EXISTS public.blogs (
@@ -55,11 +46,6 @@ CREATE TABLE IF NOT EXISTS public.blogs (
     CONSTRAINT blogs_author_id_fkey FOREIGN KEY (author_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 ALTER TABLE public.blogs ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow public read access to published blogs" ON public.blogs;
-CREATE POLICY "Allow public read access to published blogs" ON public.blogs FOR SELECT USING (is_published = true);
-DROP POLICY IF EXISTS "Allow admin full access to blogs" ON public.blogs;
-CREATE POLICY "Allow admin full access to blogs" ON public.blogs FOR ALL USING (auth.role() = 'service_role'::text);
-
 
 -- Create blog_tag_relations table
 CREATE TABLE IF NOT EXISTS public.blog_tag_relations (
@@ -70,10 +56,63 @@ CREATE TABLE IF NOT EXISTS public.blog_tag_relations (
     CONSTRAINT blog_tag_relations_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.blog_tags(id) ON DELETE CASCADE
 );
 ALTER TABLE public.blog_tag_relations ENABLE ROW LEVEL SECURITY;
+
+-- Add a 'role' column to the 'profiles' table to distinguish admins
+-- We'll also add a constraint to ensure the role is one of the allowed values.
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user';
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check CHECK (role IN ('user', 'admin'));
+
+-- Create a helper function to get the current user's role
+CREATE OR REPLACE FUNCTION public.get_user_role()
+RETURNS TEXT
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT COALESCE(
+    (SELECT role FROM public.profiles WHERE user_id = auth.uid()),
+    'user'
+  );
+$$;
+
+-- Grant execute permission on the function to authenticated users
+GRANT EXECUTE ON FUNCTION public.get_user_role() TO authenticated;
+
+-- RLS Policies for blog_categories
+DROP POLICY IF EXISTS "Allow public read access to blog categories" ON public.blog_categories;
+CREATE POLICY "Allow public read access to blog categories" ON public.blog_categories FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow admin write access to blog categories" ON public.blog_categories;
+CREATE POLICY "Allow admin write access to blog categories" ON public.blog_categories
+  FOR ALL
+  USING (public.get_user_role() = 'admin')
+  WITH CHECK (public.get_user_role() = 'admin');
+
+-- RLS Policies for blog_tags
+DROP POLICY IF EXISTS "Allow public read access to blog tags" ON public.blog_tags;
+CREATE POLICY "Allow public read access to blog tags" ON public.blog_tags FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow admin write access to blog tags" ON public.blog_tags;
+CREATE POLICY "Allow admin write access to blog tags" ON public.blog_tags
+  FOR ALL
+  USING (public.get_user_role() = 'admin')
+  WITH CHECK (public.get_user_role() = 'admin');
+
+-- RLS Policies for blogs
+DROP POLICY IF EXISTS "Allow public read access to published blogs" ON public.blogs;
+CREATE POLICY "Allow public read access to published blogs" ON public.blogs FOR SELECT USING (is_published = true);
+DROP POLICY IF EXISTS "Allow admin full access to blogs" ON public.blogs;
+CREATE POLICY "Allow admin full access to blogs" ON public.blogs
+  FOR ALL
+  USING (public.get_user_role() = 'admin')
+  WITH CHECK (public.get_user_role() = 'admin');
+
+-- RLS Policies for blog_tag_relations
 DROP POLICY IF EXISTS "Allow public read access to blog tag relations" ON public.blog_tag_relations;
 CREATE POLICY "Allow public read access to blog tag relations" ON public.blog_tag_relations FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Allow admin write access to blog tag relations" ON public.blog_tag_relations;
-CREATE POLICY "Allow admin write access to blog tag relations" ON public.blog_tag_relations FOR ALL USING (auth.role() = 'service_role'::text);
+CREATE POLICY "Allow admin write access to blog tag relations" ON public.blog_tag_relations
+  FOR ALL
+  USING (public.get_user_role() = 'admin')
+  WITH CHECK (public.get_user_role() = 'admin');
 
 
 -- Create storage bucket for blog images

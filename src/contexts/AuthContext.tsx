@@ -9,6 +9,7 @@ interface UserProfile {
   avatar_url: string | null;
   phone_number: string | null;
   created_at: string;
+  role: string | null;
 }
 
 interface AuthContextType {
@@ -18,6 +19,7 @@ interface AuthContextType {
   loading: boolean;
   initialized: boolean;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   initializeAuth: () => Promise<void>;
   signInWithMagicLink: (email: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
@@ -55,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const supabase = await getSupabase();
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, role')
         .eq('user_id', userId)
         .single();
       
@@ -198,6 +200,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   }, [getSupabase]);
 
+  const isAdmin = useMemo(() => profile?.role === 'admin', [profile]);
+
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
     user, 
@@ -206,13 +210,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading, 
     initialized,
     isAuthenticated: !!user,
+    isAdmin,
     initializeAuth,
     signInWithMagicLink,
     signInWithGoogle,
     signOut,
     refreshProfile,
     cleanup,
-  }), [user, session, profile, loading, initialized, initializeAuth, signInWithMagicLink, signInWithGoogle, signOut, refreshProfile, cleanup]);
+  }), [user, session, profile, loading, initialized, isAdmin, initializeAuth, signInWithMagicLink, signInWithGoogle, signOut, refreshProfile, cleanup]);
 
   return (
     <AuthContext.Provider value={value}>

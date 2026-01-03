@@ -15,4 +15,16 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    sourcemap: false, // Recommended to disable for production
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Example of splitting a large dependency
+          // 'react-vendor': ['react', 'react-dom'], 
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000, // Optional: Adjust if needed
+  },
 }));
