@@ -22,6 +22,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  cleanup: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -75,6 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.id, fetchProfile]);
 
+  // Store subscription ref for cleanup
+  const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
+
   // Initialize auth - only called when user wants to sign in or access auth features
   const initializeAuth = useCallback(async () => {
     if (initialized || initializingRef.current) return;
@@ -85,13 +89,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const supabase = await getSupabase();
       
-      // Set up auth state listener
-      supabase.auth.onAuthStateChange((event, session) => {
+      // Set up auth state listener FIRST (before checking session)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        // Only synchronous state updates in callback
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
         
-        // Fetch profile after auth state changes (deferred to avoid deadlock)
+        // Defer Supabase calls to prevent deadlock
         if (session?.user) {
           setTimeout(() => {
             fetchProfile(session.user.id).then(setProfile);
@@ -100,8 +105,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(null);
         }
       });
+      
+      // Store subscription for cleanup
+      subscriptionRef.current = subscription;
 
-      // Check for existing session
+      // THEN check for existing session
       const { data: { session: existingSession } } = await supabase.auth.getSession();
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
@@ -122,6 +130,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       initializingRef.current = false;
     }
   }, [initialized, getSupabase, fetchProfile]);
+
+  // Cleanup subscription on unmount
+  const cleanup = useCallback(() => {
+    if (subscriptionRef.current) {
+      subscriptionRef.current.unsubscribe();
+      subscriptionRef.current = null;
+    }
+  }, []);
 
   const signInWithMagicLink = useCallback(async (email: string) => {
     const supabase = await getSupabase();
@@ -172,7 +188,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithGoogle,
     signOut,
     refreshProfile,
-  }), [user, session, profile, loading, initialized, initializeAuth, signInWithMagicLink, signInWithGoogle, signOut, refreshProfile]);
+    cleanup,
+  }), [user, session, profile, loading, initialized, initializeAuth, signInWithMagicLink, signInWithGoogle, signOut, refreshProfile, cleanup]);
 
   return (
     <AuthContext.Provider value={value}>
