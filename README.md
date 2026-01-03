@@ -1,73 +1,159 @@
-# Welcome to your Lovable project
+# Ancure Health
 
-## Project info
+A menstrual cycle tracking application built with React, TypeScript, and Supabase.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Features
 
-## How can I edit this code?
+- 📅 Cycle tracking and predictions
+- 📊 Symptom logging and trends
+- 🔐 Secure authentication (Email & Google OAuth)
+- 📱 Responsive design for mobile and desktop
+- ☁️ Cloud sync across devices
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS
+- **UI Components:** shadcn/ui, Radix UI
+- **Backend:** Supabase (Auth, Database, Storage)
+- **Deployment:** Cloudflare Pages
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## Quick Start
 
-**Use your preferred IDE**
+### Prerequisites
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Node.js 18+ ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
+- npm or bun
+- A Supabase project
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 1. Clone the Repository
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+```bash
 git clone <YOUR_GIT_URL>
+cd ancure-health
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### 2. Install Dependencies
 
-# Step 3: Install the necessary dependencies.
-npm i
+```bash
+npm install
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### 3. Configure Environment Variables
+
+Copy the example environment file:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your Supabase credentials:
+
+```env
+# Required - Get these from Supabase Dashboard → Settings → API
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+**Where to find these values:**
+1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
+2. Select your project
+3. Navigate to **Settings** → **API**
+4. Copy the **Project URL** → `VITE_SUPABASE_URL`
+5. Copy the **anon public** key → `VITE_SUPABASE_ANON_KEY`
+
+### 4. Start Development Server
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The app will be available at `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+## Available Scripts
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview production build locally |
+| `npm run lint` | Run ESLint |
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+## Deployment
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed Cloudflare Pages deployment instructions.
 
-## How can I deploy this project?
+### Quick Deploy to Cloudflare Pages
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+1. Push your code to GitHub
+2. Connect repository to Cloudflare Pages
+3. Set build settings:
+   - **Build command:** `npm run build`
+   - **Output directory:** `dist`
+   - **Framework preset:** Vite
+4. Add environment variables in Cloudflare Pages settings
+5. Deploy!
 
-## Can I connect a custom domain to my Lovable project?
+---
 
-Yes, you can!
+## Project Structure
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```
+src/
+├── components/       # React components
+│   ├── ui/          # shadcn/ui components
+│   └── ...          # Feature components
+├── contexts/        # React contexts (Auth, etc.)
+├── hooks/           # Custom React hooks
+├── integrations/    # External service integrations
+│   └── supabase/   # Supabase client & types
+├── lib/             # Utility functions
+├── pages/           # Page components
+└── assets/          # Static assets
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+---
+
+## Authentication Setup
+
+### Email Magic Link
+Works out of the box with Supabase configuration.
+
+### Google OAuth
+1. Create OAuth credentials in [Google Cloud Console](https://console.cloud.google.com)
+2. Add credentials to Supabase → Authentication → Providers → Google
+3. Configure authorized origins and redirect URIs
+
+See [Supabase Google Auth Docs](https://supabase.com/docs/guides/auth/social-login/auth-google) for details.
+
+---
+
+## Development with Lovable
+
+This project is built with [Lovable](https://lovable.dev). You can:
+
+- Edit directly in Lovable's visual editor
+- Make changes locally and push to sync
+- Use the two-way GitHub sync
+
+---
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_SUPABASE_URL` | ✅ | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | ✅ | Supabase anonymous/public API key |
+
+> **Note:** Never commit your `.env` file. Use `.env.example` as a template.
+
+---
+
+## License
+
+Private - All rights reserved.
