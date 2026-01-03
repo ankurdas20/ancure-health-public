@@ -74,7 +74,7 @@ export function PhoneCollectionModal({ open, onClose, userId }: PhoneCollectionM
   };
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+    <Dialog open={open} onOpenChange={() => {/* Prevent closing without phone */}}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="text-center">
           <motion.div 
@@ -136,15 +136,9 @@ export function PhoneCollectionModal({ open, onClose, userId }: PhoneCollectionM
             )}
           </Button>
 
-          <Button
-            type="button"
-            variant="ghost"
-            className="w-full text-muted-foreground"
-            onClick={handleSkip}
-            disabled={isLoading}
-          >
-            Skip for now
-          </Button>
+          <p className="text-xs text-center text-muted-foreground">
+            Your phone number is required to complete registration.
+          </p>
         </form>
       </DialogContent>
     </Dialog>
