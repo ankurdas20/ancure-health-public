@@ -4,8 +4,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from "./contexts/AuthContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 // Lazy load pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -13,6 +15,15 @@ const Track = lazy(() => import("./pages/Track"));
 const Auth = lazy(() => import("./pages/Auth"));
 const AncureOneWelcome = lazy(() => import("./pages/AncureOneWelcome"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+
+// Blog pages
+const Blogs = lazy(() => import("./pages/Blogs"));
+const BlogPost = lazy(() => import("./pages/BlogPost"));
+const BlogCategory = lazy(() => import("./pages/BlogCategory"));
+
+// Admin pages
+const BlogDashboard = lazy(() => import("./pages/admin/BlogDashboard"));
+const BlogEditor = lazy(() => import("./pages/admin/BlogEditor"));
 
 /**
  * Minimal loading fallback component shown during lazy loading
@@ -43,25 +54,50 @@ const queryClient = new QueryClient({
  */
 const App = () => (
   <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/track" element={<Track />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/ancure-one-welcome" element={<AncureOneWelcome />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-        </AuthProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <AuthProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/track" element={<Track />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/ancure-one-welcome" element={<AncureOneWelcome />} />
+                  
+                  {/* Blog Routes */}
+                  <Route path="/blogs" element={<Blogs />} />
+                  <Route path="/blogs/:slug" element={<BlogPost />} />
+                  <Route path="/blogs/category/:slug" element={<BlogCategory />} />
+                  
+                  {/* Admin Blog Routes (Protected) */}
+                  <Route path="/admin/blogs" element={
+                    <ProtectedRoute>
+                      <BlogDashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/blogs/new" element={
+                    <ProtectedRoute>
+                      <BlogEditor />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/blogs/edit/:id" element={
+                    <ProtectedRoute>
+                      <BlogEditor />
+                    </ProtectedRoute>
+                  } />
+                  
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
+          </AuthProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </HelmetProvider>
   </ErrorBoundary>
 );
 
