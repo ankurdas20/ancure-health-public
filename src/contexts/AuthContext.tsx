@@ -9,7 +9,6 @@ interface UserProfile {
   avatar_url: string | null;
   phone_number: string | null;
   created_at: string;
-  role: string | null;
 }
 
 interface AuthContextType {
@@ -57,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const supabase = await getSupabase();
       const { data, error } = await supabase
         .from('profiles')
-        .select('*, role')
+        .select('*')
         .eq('user_id', userId)
         .single();
       
@@ -200,7 +199,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   }, [getSupabase]);
 
-  const isAdmin = useMemo(() => profile?.role === 'admin', [profile]);
+  // Admin check - for now, no role column exists, so admin is always false
+  // Add a 'role' column to profiles table if admin functionality is needed
+  const isAdmin = useMemo(() => false, []);
 
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
