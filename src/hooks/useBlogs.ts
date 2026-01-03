@@ -208,7 +208,6 @@ export function useAdminBlog(id: string) {
 
       if (error) throw error;
 
-      // Fetch tags for this blog
       const { data: tagRelations } = await supabase
         .from('blog_tag_relations')
         .select('tag_id')
@@ -279,6 +278,16 @@ export function useRelatedBlogs(currentBlogId: string, categoryId: string | null
   });
 }
 
+const getFullBlog = async (id: string): Promise<Blog> => {
+    const { data, error } = await supabase
+        .from('blogs')
+        .select(`*, category:blog_categories(*)`)
+        .eq('id', id)
+        .single();
+    if (error) throw error;
+    return data as Blog;
+}
+
 // Create blog mutation
 export function useCreateBlog(options?: { onSuccess?: (data: Blog) => void }) {
   const queryClient = useQueryClient();
@@ -298,20 +307,17 @@ export function useCreateBlog(options?: { onSuccess?: (data: Blog) => void }) {
           read_time_minutes,
           published_at: blogData.is_published ? new Date().toISOString() : null,
         })
-        .select()
+        .select('id')
         .single();
 
       if (error) throw error;
 
       if (tag_ids.length > 0) {
-        const tagRelations = tag_ids.map(tag_id => ({
-          blog_id: blog.id,
-          tag_id,
-        }));
+        const tagRelations = tag_ids.map(tag_id => ({ blog_id: blog.id, tag_id }));
         await supabase.from('blog_tag_relations').insert(tagRelations);
       }
       
-      return blog as Blog;
+      return await getFullBlog(blog.id);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['blogs'] });
@@ -351,7 +357,7 @@ export function useUpdateBlog(options?: { onSuccess?: (data: Blog) => void }) {
         .from('blogs')
         .update(blogData)
         .eq('id', id)
-        .select()
+        .select('id')
         .single();
 
       if (error) throw error;
@@ -359,15 +365,12 @@ export function useUpdateBlog(options?: { onSuccess?: (data: Blog) => void }) {
       if (tag_ids !== undefined) {
         await supabase.from('blog_tag_relations').delete().eq('blog_id', id);
         if (tag_ids.length > 0) {
-          const tagRelations = tag_ids.map(tag_id => ({
-            blog_id: id,
-            tag_id,
-          }));
+          const tagRelations = tag_ids.map(tag_id => ({ blog_id: id, tag_id }));
           await supabase.from('blog_tag_relations').insert(tagRelations);
         }
       }
       
-      return blog as Blog;
+      return await getFullBlog(blog.id);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['blogs'] });
@@ -389,11 +392,9 @@ export function useDeleteBlog() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Delete tag relations first
       await supabase.from('blog_tag_relations').delete().eq('blog_id', id);
-
       const { error } = await supabase.from('blogs').delete().eq('id', id);
-      if (error) throw.error;
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['blogs'] });
