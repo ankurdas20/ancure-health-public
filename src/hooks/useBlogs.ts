@@ -70,7 +70,7 @@ export function usePublishedBlogs(options?: {
       let query = supabase
         .from('blogs')
         .select(`
-          *,,
+          *,
           category:blog_categories(*)
         `, { count: 'exact' })
         .eq('is_published', true)
@@ -120,7 +120,7 @@ export function useBlog(slug: string) {
       const { data, error } = await supabase
         .from('blogs')
         .select(`
-          *,,
+          *,
           category:blog_categories(*)
         `)
         .eq('slug', slug)
@@ -164,7 +164,7 @@ export function useAdminBlogs(options?: {
       let query = supabase
         .from('blogs')
         .select(`
-          *,,
+          *,
           category:blog_categories(*)
         `)
         .order('updated_at', { ascending: false });
@@ -200,7 +200,7 @@ export function useAdminBlog(id: string) {
       const { data, error } = await supabase
         .from('blogs')
         .select(`
-          *,,
+          *,
           category:blog_categories(*)
         `)
         .eq('id', id)
