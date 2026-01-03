@@ -66,10 +66,18 @@ export async function saveCloudCycleData(userId: string, data: CycleData): Promi
         onConflict: 'user_id'
       });
     
-    if (error) throw error;
+    if (error) {
+      // Log in development only
+      if (import.meta.env.DEV) {
+        console.error('[saveCloudCycleData] Error:', error);
+      }
+      throw error;
+    }
     return { error: null };
   } catch (error) {
-    console.error('Failed to save cycle data to cloud:', error);
+    if (import.meta.env.DEV) {
+      console.error('[saveCloudCycleData] Failed:', error);
+    }
     return { error: error as Error };
   }
 }
@@ -83,7 +91,12 @@ export async function loadCloudCycleData(userId: string): Promise<CycleData | nu
       .eq('user_id', userId)
       .maybeSingle();
     
-    if (error) throw error;
+    if (error) {
+      if (import.meta.env.DEV) {
+        console.error('[loadCloudCycleData] Error:', error);
+      }
+      throw error;
+    }
     if (!data) return null;
     
     return {
@@ -98,7 +111,9 @@ export async function loadCloudCycleData(userId: string): Promise<CycleData | nu
       activityLevel: data.activity_level as CycleData['activityLevel'],
     };
   } catch (error) {
-    console.error('Failed to load cycle data from cloud:', error);
+    if (import.meta.env.DEV) {
+      console.error('[loadCloudCycleData] Failed:', error);
+    }
     return null;
   }
 }
@@ -111,10 +126,17 @@ export async function deleteCloudCycleData(userId: string): Promise<{ error: Err
       .delete()
       .eq('user_id', userId);
     
-    if (error) throw error;
+    if (error) {
+      if (import.meta.env.DEV) {
+        console.error('[deleteCloudCycleData] Error:', error);
+      }
+      throw error;
+    }
     return { error: null };
   } catch (error) {
-    console.error('Failed to delete cycle data from cloud:', error);
+    if (import.meta.env.DEV) {
+      console.error('[deleteCloudCycleData] Failed:', error);
+    }
     return { error: error as Error };
   }
 }

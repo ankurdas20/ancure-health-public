@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, memo, useMemo } from 'react';
-import { TrendingUp, Lock, LogIn } from 'lucide-react';
+import { TrendingUp, Lock, LogIn, AlertCircle, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { format, subDays, parseISO } from 'date-fns';
+import { getUserFriendlyError } from '@/lib/supabaseHelpers';
 import {
   AreaChart,
   Area,
@@ -42,6 +43,7 @@ export const SymptomTrendsChart = memo(function SymptomTrendsChart() {
   const navigate = useNavigate();
   const [logs, setLogs] = useState<SymptomLog[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [supabase, setSupabase] = useState<any>(null);
 
   // Lazy load supabase only when user is authenticated
@@ -63,19 +65,29 @@ export const SymptomTrendsChart = memo(function SymptomTrendsChart() {
     if (!user || !supabase) return;
     
     setIsLoading(true);
-    const thirtyDaysAgo = subDays(new Date(), 30).toISOString().split('T')[0];
+    setError(null);
     
-    const { data } = await supabase
-      .from('symptom_logs')
-      .select('log_date, symptoms, mood, energy_level')
-      .eq('user_id', user.id)
-      .gte('log_date', thirtyDaysAgo)
-      .order('log_date', { ascending: true });
+    try {
+      const thirtyDaysAgo = subDays(new Date(), 30).toISOString().split('T')[0];
+      
+      const { data, error: queryError } = await supabase
+        .from('symptom_logs')
+        .select('log_date, symptoms, mood, energy_level')
+        .eq('user_id', user.id)
+        .gte('log_date', thirtyDaysAgo)
+        .order('log_date', { ascending: true });
 
-    if (data) {
-      setLogs(data);
+      if (queryError) {
+        throw queryError;
+      }
+      
+      setLogs(data || []);
+    } catch (err) {
+      console.error('[SymptomTrendsChart] Load error:', err);
+      setError(getUserFriendlyError(err));
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, [user, supabase]);
 
   // Memoize expensive calculations
@@ -178,6 +190,34 @@ export const SymptomTrendsChart = memo(function SymptomTrendsChart() {
         </CardHeader>
         <CardContent className="flex justify-center py-8">
           <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card variant="soft" className="overflow-hidden border border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <TrendingUp className="w-5 h-5 text-primary" />
+            Symptom Trends
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-center py-6 space-y-3">
+          <div className="flex items-center justify-center gap-2 text-destructive">
+            <AlertCircle className="w-4 h-4" />
+            <p className="text-sm">{error}</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={loadLogs}
+            className="gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Try Again
+          </Button>
         </CardContent>
       </Card>
     );
