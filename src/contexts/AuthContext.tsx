@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef, ReactNode, useMemo, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, ReactNode, useMemo } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 
 interface UserProfile {
@@ -33,16 +33,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
   
+  // Use ref to store supabase client to avoid re-renders
   const supabaseRef = useRef<typeof import('@/integrations/supabase/client').supabase | null>(null);
   const initializingRef = useRef(false);
 
+  // Lazy-load Supabase only when needed
   const getSupabase = useCallback(async () => {
     if (supabaseRef.current) return supabaseRef.current;
+    
     const { supabase } = await import('@/integrations/supabase/client');
     supabaseRef.current = supabase;
     return supabase;
   }, []);
 
+  // Fetch user profile from database
   const fetchProfile = useCallback(async (userId: string) => {
     try {
       const supabase = await getSupabase();
@@ -63,8 +67,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [getSupabase]);
 
+  // Refresh profile data
+  const refreshProfile = useCallback(async () => {
+    if (user?.id) {
+      const profileData = await fetchProfile(user.id);
+      setProfile(profileData);
+    }
+  }, [user?.id, fetchProfile]);
+
+  // Initialize auth - only called when user wants to sign in or access auth features
   const initializeAuth = useCallback(async () => {
-    if (initializingRef.current) return;
+    if (initialized || initializingRef.current) return;
     
     initializingRef.current = true;
     setLoading(true);
@@ -72,11 +85,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const supabase = await getSupabase();
       
+      // Set up auth state listener
       supabase.auth.onAuthStateChange((event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
         
+        // Fetch profile after auth state changes (deferred to avoid deadlock)
         if (session?.user) {
           setTimeout(() => {
             fetchProfile(session.user.id).then(setProfile);
@@ -84,17 +99,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setProfile(null);
         }
-
-        // Clean up the URL if we just signed in
-        if (event === 'SIGNED_IN') {
-           window.history.replaceState({}, document.title, window.location.pathname);
-        }
       });
 
+      // Check for existing session
       const { data: { session: existingSession } } = await supabase.auth.getSession();
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
       
+      // Fetch profile if user exists
       if (existingSession?.user) {
         const profileData = await fetchProfile(existingSession.user.id);
         setProfile(profileData);
@@ -109,36 +121,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       initializingRef.current = false;
     }
-  }, [getSupabase, fetchProfile]);
-
-  // NEW: AUTO-START LOGIC
-  // This looks at the URL for the Google token and starts the login immediately
-  useEffect(() => {
-    const autoRun = async () => {
-      if (window.location.hash.includes('access_token=') || !initialized) {
-        await initializeAuth();
-      }
-    };
-    autoRun();
-  }, [initializeAuth, initialized]);
+  }, [initialized, getSupabase, fetchProfile]);
 
   const signInWithMagicLink = useCallback(async (email: string) => {
     const supabase = await getSupabase();
     const redirectUrl = `${window.location.origin}/`;
+    
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: redirectUrl },
+      options: {
+        emailRedirectTo: redirectUrl,
+      },
     });
+    
     return { error };
   }, [getSupabase]);
 
   const signInWithGoogle = useCallback(async () => {
     const supabase = await getSupabase();
     const redirectUrl = `${window.location.origin}/`;
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: redirectUrl },
+      options: {
+        redirectTo: redirectUrl,
+      },
     });
+    
     return { error };
   }, [getSupabase]);
 
@@ -150,13 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   }, [getSupabase]);
 
-  const refreshProfile = useCallback(async () => {
-    if (user?.id) {
-      const profileData = await fetchProfile(user.id);
-      setProfile(profileData);
-    }
-  }, [user?.id, fetchProfile]);
-
+  // Memoize context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
     user, 
     session, 

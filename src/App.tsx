@@ -1,34 +1,56 @@
-import { useEffect, useState } from 'react'
-import { User } from '@supabase/supabase-js'
-import { supabase } from './integrations/supabase/client'
-import Index from './pages/Index' // Keep this as is if Index is a default export
-import { Dashboard } from './components/Dashboard' // ADD CURLY BRACES HERE
+import { lazy, Suspense } from 'react';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
 
-function App() {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+// Lazy load pages for code splitting
+const Index = lazy(() => import("./pages/Index"));
+const Track = lazy(() => import("./pages/Track"));
+const Auth = lazy(() => import("./pages/Auth"));
+const AncureOneWelcome = lazy(() => import("./pages/AncureOneWelcome"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+// Minimal loading fallback
+const PageLoader = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-    })
+// Create query client outside component to prevent recreation
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 30, // 30 minutes (formerly cacheTime)
+    },
+  },
+});
 
-    return () => subscription.unsubscribe()
-  }, [])
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <AuthProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/track" element={<Track />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/ancure-one-welcome" element={<AncureOneWelcome />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </AuthProvider>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
-  if (loading) return <div>Loading...</div>
-
-  // If logged in, show the Dashboard. If not, show the Index/Landing page.
-  return (
-    <>
-      {user ? <Dashboard /> : <Index />}
-    </>
-  )
-}
-
-export default App
+export default App;

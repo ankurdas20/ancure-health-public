@@ -17,103 +17,78 @@ import { useAuth } from "@/contexts/AuthContext";
 import { UserMenu } from "@/components/UserMenu";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 
 export const TrackPage = memo(function TrackPage() {
   const navigate = useNavigate();
   const { user, initialized, signOut } = useAuth();
-  const { toast } = useToast();
 
   const [cycleData, setCycleData] = useState<CycleData | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hasReset, setHasReset] = useState(false);
 
-  // 1. Initial Load: Try Local Storage first for speed
+  // Load local data immediately (no auth required)
   useEffect(() => {
     const localData = loadLocalCycleData();
     if (localData) {
       setCycleData(localData);
       setShowDashboard(true);
     }
-    // Don't set isLoading(false) here if we expect a user to log in
-    if (!user) setIsLoading(false);
-  }, [user]);
+    setIsLoading(false);
+  }, []);
 
-  // 2. Cloud Sync: If user is logged in, fetch from Supabase
+  // If user becomes authenticated, sync with cloud
   useEffect(() => {
     const syncWithCloud = async () => {
-      if (!user || !initialized || hasReset) {
-        setIsLoading(false);
-        return;
-      }
+      if (!user || hasReset) return;
       
-      try {
-        // First, move any guest data to the cloud
-        await migrateLocalToCloud(user.id);
-        
-        // Then, fetch the most recent data from Supabase
-        const cloudData = await loadCloudCycleData(user.id);
-        if (cloudData) {
-          setCycleData(cloudData);
-          setShowDashboard(true);
-          console.log("Ancure Health: Cloud data synced successfully.");
-        }
-      } catch (err) {
-        console.error("Cloud Sync Error:", err);
-      } finally {
-        setIsLoading(false);
+      // Migrate local data to cloud
+      await migrateLocalToCloud(user.id);
+      
+      // Load cloud data (may have more history)
+      const cloudData = await loadCloudCycleData(user.id);
+      if (cloudData) {
+        setCycleData(cloudData);
+        setShowDashboard(true);
       }
     };
 
-    syncWithCloud();
+    if (user && initialized) {
+      syncWithCloud();
+    }
   }, [user, initialized, hasReset]);
 
   const handleFormSubmit = useCallback(async (data: CycleData) => {
     setHasReset(false);
     setCycleData(data);
     
-    // Save locally for offline/guest use
+    // Always save locally first (instant)
     saveLocalCycleData(data);
     
-    // CRITICAL: Save to Supabase Cloud
+    // If user is authenticated, also save to cloud
     if (user) {
-      const { error } = await saveCloudCycleData(user.id, data);
-      if (error) {
-        toast({
-          title: "Cloud Sync Failed",
-          description: "Data saved locally but couldn't reach the server.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Securely Saved",
-          description: "Your health data is now synced to your Ancure account.",
-        });
-      }
+      await saveCloudCycleData(user.id, data);
     }
     
     setShowDashboard(true);
-  }, [user, toast]);
+  }, [user]);
 
   const handleReset = useCallback(() => {
     setHasReset(true);
-    clearLocalCycleData();
+    if (!user) clearLocalCycleData();
     setCycleData(null);
     setShowDashboard(false);
-    toast({
-      title: "Data Reset",
-      description: "Local data cleared. Log in to manage cloud history.",
-    });
-  }, [toast]);
+  }, [user]);
 
   const handleLogPeriod = useCallback(async (date: string) => {
     if (!cycleData) return;
     const updatedData = { ...cycleData, lastPeriodDate: date };
     setCycleData(updatedData);
     
+    // Save locally first
     saveLocalCycleData(updatedData);
     
+    // Sync to cloud if authenticated
     if (user) {
       await saveCloudCycleData(user.id, updatedData);
     }
@@ -121,22 +96,24 @@ export const TrackPage = memo(function TrackPage() {
 
   const handleSignOut = useCallback(async () => {
     await signOut();
-    // Clear local cache on logout for security
-    clearLocalCycleData();
-    setCycleData(null);
-    setShowDashboard(false);
-    navigate("/");
-  }, [signOut, navigate]);
+    // Keep local data visible after sign out
+    const localData = loadLocalCycleData();
+    if (localData) {
+      setCycleData(localData);
+      setShowDashboard(true);
+    } else {
+      setCycleData(null);
+      setShowDashboard(false);
+    }
+  }, [signOut]);
 
   const insights = cycleData ? calculateCycleInsights(cycleData) : null;
 
+  // Show loading only briefly for local data
   if (isLoading) {
     return (
       <div className="min-h-screen w-full bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-muted-foreground animate-pulse">Syncing with Ancure Cloud...</p>
-        </div>
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -149,7 +126,7 @@ export const TrackPage = memo(function TrackPage() {
             <ArrowLeft className="w-4 h-4" /> Back
           </Button>
           <Logo size="small" />
-          <UserMenu />
+          <UserMenu onSignIn={() => navigate("/auth")} />
         </header>
 
         <main>
