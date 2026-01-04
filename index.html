@@ -51,7 +51,7 @@
 
   <body>
     <!-- Static SEO Content (Google reads this instantly) -->
-    <main>
+    <main id="seo-static">
       <h1>Ancure Health</h1>
 
       <p>
@@ -100,5 +100,11 @@
     <!-- React App -->
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // hide static SEO text when React loads
+      document.addEventListener("DOMContentLoaded", function () {
+        document.getElementById("seo-static")?.style.setProperty("display", "none", "important");
+      });
+    </script>
   </body>
 </html>
