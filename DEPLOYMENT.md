@@ -25,14 +25,14 @@ This guide covers deploying the Ancure Health app to Cloudflare Pages with Supab
 
 Use these exact settings:
 
-| Setting | Value |
-|---------|-------|
-| **Project name** | `ancure-health` (or your preferred name) |
-| **Production branch** | `main` |
-| **Framework preset** | `Vite` |
-| **Build command** | `npm run build` |
-| **Build output directory** | `dist` |
-| **Root directory** | `/` (leave empty) |
+| Setting                    | Value                                    |
+| -------------------------- | ---------------------------------------- |
+| **Project name**           | `ancure-health` (or your preferred name) |
+| **Production branch**      | `main`                                   |
+| **Framework preset**       | `Vite`                                   |
+| **Build command**          | `npm run build`                          |
+| **Build output directory** | `dist`                                   |
+| **Root directory**         | `/` (leave empty)                        |
 
 ---
 
@@ -41,15 +41,17 @@ Use these exact settings:
 **CRITICAL:** You must set these environment variables before the first build.
 
 In Cloudflare Pages:
+
 1. Go to **Settings** → **Environment variables**
 2. Add these variables for **Production** (and optionally **Preview**):
 
-| Variable Name | Description | Where to Find |
-|---------------|-------------|---------------|
-| `VITE_SUPABASE_URL` | Your Supabase project URL | Supabase Dashboard → Settings → API |
+| Variable Name            | Description                        | Where to Find                       |
+| ------------------------ | ---------------------------------- | ----------------------------------- |
+| `VITE_SUPABASE_URL`      | Your Supabase project URL          | Supabase Dashboard → Settings → API |
 | `VITE_SUPABASE_ANON_KEY` | Your Supabase anonymous/public key | Supabase Dashboard → Settings → API |
 
 **Example values:**
+
 ```
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -74,6 +76,7 @@ For authentication to work, you must configure redirect URLs in Supabase:
 ### 4.2 Add Redirect URLs
 
 Add these URLs to **Redirect URLs**:
+
 ```
 https://your-project.pages.dev
 https://your-project.pages.dev/auth
@@ -81,6 +84,7 @@ https://your-project.pages.dev/*
 ```
 
 If you have a custom domain, add those URLs too:
+
 ```
 https://yourdomain.com
 https://yourdomain.com/auth
@@ -126,6 +130,7 @@ https://yourdomain.com/*
 ### "requested path is invalid" error on login
 
 This means your redirect URLs aren't configured correctly in Supabase:
+
 - Check that your Cloudflare Pages URL is in Supabase → Authentication → URL Configuration
 - Make sure Site URL matches your deployed URL exactly
 
@@ -144,6 +149,7 @@ This means your redirect URLs aren't configured correctly in Supabase:
 ### Routes returning 404
 
 The `_redirects` file in `public/` should handle SPA routing. If you still get 404s:
+
 - Verify `public/_redirects` contains: `/*    /index.html   200`
 - Check that `dist/_redirects` exists after build
 
@@ -151,17 +157,18 @@ The `_redirects` file in `public/` should handle SPA routing. If you still get 4
 
 ## Environment Variables Reference
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `VITE_SUPABASE_URL` | ✅ Yes | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | ✅ Yes | Supabase anonymous API key |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | ❌ No | Alternative name for anon key |
+| Variable                        | Required | Description                   |
+| ------------------------------- | -------- | ----------------------------- |
+| `VITE_SUPABASE_URL`             | ✅ Yes   | Supabase project URL          |
+| `VITE_SUPABASE_ANON_KEY`        | ✅ Yes   | Supabase anonymous API key    |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | ❌ No    | Alternative name for anon key |
 
 ---
 
 ## Automatic Deployments
 
 Once connected, Cloudflare Pages will automatically:
+
 - Deploy when you push to the `main` branch
 - Create preview deployments for pull requests
 - Provide unique URLs for each deployment
@@ -187,13 +194,14 @@ After your first successful deployment:
 
 1. In Cloudflare Pages, go to **Custom domains**
 2. Click **Set up a custom domain**
-3. Enter your domain (e.g., `app.ancure.health`)
+3. Enter your domain (e.g., `ancurehealth.com`)
 4. Follow DNS configuration:
    - For apex domain: Add CNAME record pointing to `ancure-health.pages.dev`
    - For subdomain: Add CNAME record pointing to `ancure-health.pages.dev`
 5. Wait for SSL certificate provisioning (usually automatic)
 
 **Important:** After adding a custom domain, update Supabase:
+
 - Add the new domain to Site URL
 - Add the new domain to Redirect URLs
 
@@ -207,6 +215,7 @@ After your first successful deployment:
    - **Requests**: Total requests, bandwidth, cache hit ratio
 
 For more detailed analytics:
+
 1. Go to Cloudflare Dashboard → **Analytics & Logs**
 2. Select **Web Analytics**
 3. Enable for your domain
@@ -222,12 +231,14 @@ To check for errors in your backend:
    - **API logs**: REST API requests
 
 **Common things to monitor:**
+
 - Failed authentication attempts
 - RLS policy violations
 - Slow queries
 - Error rates
 
 To access via Lovable Cloud:
+
 ```xml
 <presentation-actions>
   <presentation-open-backend>View Backend</presentation-open-backend>
@@ -237,6 +248,7 @@ To access via Lovable Cloud:
 ### 5. Set Up Alerts (Optional)
 
 In Cloudflare:
+
 1. Go to **Notifications**
 2. Create alerts for:
    - Deployment failures
@@ -244,16 +256,19 @@ In Cloudflare:
    - Traffic anomalies
 
 In Supabase:
+
 1. Go to **Settings** → **Logs & Analytics**
 2. Enable **Database Health Reports**
 
 ### 6. Performance Optimization
 
 **Cloudflare Caching:**
+
 - Static assets are cached automatically
 - Configure cache rules in **Rules** → **Cache Rules**
 
 **Recommended settings:**
+
 - Enable **Auto Minify** (HTML, CSS, JS)
 - Enable **Brotli compression**
 - Set appropriate cache TTLs for static assets
@@ -279,7 +294,7 @@ Before announcing your app:
 
 If something goes wrong:
 
-1. **Cloudflare Pages**: 
+1. **Cloudflare Pages**:
    - Go to **Deployments**
    - Find the last working deployment
    - Click **...** → **Rollback to this deployment**
